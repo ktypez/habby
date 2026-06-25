@@ -1,0 +1,1 @@
+{ "includes": ["src/**/*.ts", "src/**/*.astro"], "excludes": ["node_modules/*", ".vercel/*"] }

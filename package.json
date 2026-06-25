@@ -1,0 +1,21 @@
+{
+  "name": "habby",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "start": "astro start",
+    "preview": "astro preview",
+    "analyze": "astro analyze",
+    "lighthouse": "lighthouse-ci"
+  },
+  "dependencies": {
+    "@astrojs/vercel": "^11.0.0",
+    "astro": "^7.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}
