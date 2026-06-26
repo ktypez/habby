@@ -36,6 +36,36 @@
   --border-w: 4px;
   --shadow-x: 6px;
   --shadow-y: 6px;
+
+  /* Dark mode overrides (applied via .dark on <html>) */
+  --dark-bg: #121212;
+  --dark-card-bg: #1e1e1e;
+  --dark-off-bg: #252525;
+  --dark-text: #e8e8e8;
+  --dark-text-muted: #999999;
+  --dark-border: #e8e8e8;
+  --dark-shadow: #e8e8e8;
+  --dark-gray: #333333;
+  --dark-checked: #0a2e1a;
+}
+
+html.dark {
+  --bg: var(--dark-bg);
+  --card-bg: var(--dark-card-bg);
+  --off-white: var(--dark-off-bg);
+  --text: var(--dark-text);
+  --text-muted: var(--dark-text-muted);
+  --border: var(--dark-border);
+  --shadow: var(--dark-shadow);
+  --gray: var(--dark-gray);
+  --gray-dark: var(--dark-text-muted);
+  --black: var(--dark-text);
+  --white: var(--dark-card-bg);
+}
+
+html.dark .stat-badge,
+html.dark .xp-level-badge {
+  color: var(--dark-text);
 }
 
 html {
@@ -264,39 +294,17 @@ input, textarea { font-family: inherit; }
 .emoji-picker { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .emoji-option {
-  width: 44px; height: 44px;
+  width: 36px; height: 36px;
   display: grid; place-items: center;
-  font-size: 22px;
+  font-size: 18px;
   background: var(--off-white);
-  border: 3px solid var(--black);
-  transition: all 0.1s ease;
+  border: 2px solid var(--black);
+  transition: background 0.15s ease;
   line-height: 1;
+  border-radius: 4px;
 }
-.emoji-option:hover { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--shadow); }
-.emoji-option.selected { background: var(--yellow); box-shadow: 3px 3px 0 var(--shadow); transform: translate(-1px, -1px); }
-
-/* Category picker in add habit form */
-.category-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.category-opt {
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  background: var(--off-white);
-  border: 3px solid var(--black);
-  transition: all 0.1s ease;
-  line-height: 1;
-}
-.category-opt:hover { transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--shadow); }
-.category-opt.selected {
-  background: var(--lime);
-  box-shadow: 2px 2px 0 var(--shadow);
-  transform: translate(-1px, -1px);
-}
+.emoji-option:hover { background: var(--yellow); }
+.emoji-option.selected { background: var(--yellow); }
 
 .add-habit-input-row { display: flex; gap: 8px; }
 
@@ -325,42 +333,6 @@ input, textarea { font-family: inherit; }
 }
 .btn-add:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--shadow); }
 .btn-add:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
-
-/* ============================================
-   FILTER BAR
-   ============================================ */
-
-.filter-bar {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.filter-btn {
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 900;
-  font-family: var(--font-display);
-  letter-spacing: 1px;
-  background: var(--white);
-  border: 3px solid var(--black);
-  color: var(--text);
-  transition: all 0.1s ease;
-  line-height: 1;
-}
-
-.filter-btn:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 3px 3px 0 var(--shadow);
-}
-
-.filter-btn.active {
-  background: var(--black);
-  color: var(--white);
-  transform: translate(-1px, -1px);
-  box-shadow: 2px 2px 0 var(--gray-dark);
-}
 
 /* ============================================
    SECTION HEADERS
@@ -393,6 +365,7 @@ input, textarea { font-family: inherit; }
 }
 .habit-card:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--shadow); }
 .habit-card.checked { background: #f0fff0; }
+html.dark .habit-card.checked { background: var(--dark-checked); }
 .habit-card.just-checked .btn-check { animation: spin 0.6s ease; }
 
 .habit-emoji { font-size: 28px; line-height: 1; width: 38px; text-align: center; flex-shrink: 0; }
@@ -408,20 +381,6 @@ input, textarea { font-family: inherit; }
 
 .habit-name { font-size: 16px; font-weight: 900; color: var(--black); word-break: break-word; }
 .habit-name.checked-name { text-decoration: line-through; opacity: 0.5; }
-
-/* Category badge */
-.habit-cat-badge {
-  font-size: 9px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 2px 8px;
-  border: 2px solid var(--black);
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
 
 .habit-meta {
   display: flex;
@@ -775,8 +734,8 @@ input, textarea { font-family: inherit; }
     45deg,
     transparent,
     transparent 8px,
-    rgba(0,0,0,0.02) 8px,
-    rgba(0,0,0,0.02) 16px
+    rgba(255,255,255,0.04) 8px,
+    rgba(255,255,255,0.04) 16px
   );
 }
 
@@ -1027,51 +986,6 @@ input, textarea { font-family: inherit; }
   color: var(--text-muted);
 }
 
-/* Category breakdown bars */
-.cat-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.cat-bar-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.cat-bar-label {
-  font-size: 11px;
-  font-weight: 700;
-  width: 70px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.cat-bar-track {
-  flex: 1;
-  height: 16px;
-  background: var(--white);
-  border: 2px solid var(--black);
-  overflow: hidden;
-}
-
-.cat-bar-fill {
-  height: 100%;
-  transition: width 0.3s ease;
-}
-
-.cat-bar-count {
-  font-size: 11px;
-  font-weight: 900;
-  width: 20px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 /* ============================================
    TOAST
    ============================================ */
@@ -1131,10 +1045,7 @@ input, textarea { font-family: inherit; }
 
   .main { padding: 16px 12px 60px; }
   .add-habit-card { padding: 16px; }
-  .emoji-option { width: 38px; height: 38px; font-size: 18px; }
-  .category-opt { font-size: 11px; padding: 5px 10px; }
-  .filter-btn { font-size: 11px; padding: 6px 10px; }
-
+  .emoji-option { width: 32px; height: 32px; font-size: 16px; }
   .add-habit-input-row { flex-direction: column; }
   .btn-add { width: 100%; text-align: center; }
 
@@ -1145,9 +1056,7 @@ input, textarea { font-family: inherit; }
   .habit-name { font-size: 14px; }
   .habit-streak { font-size: 11px; }
   .habit-timer-display { font-size: 10px; }
-  .habit-cat-badge { font-size: 8px; padding: 1px 6px; }
-
-  .btn-check { width: 38px; height: 38px; font-size: 17px; }
+    .btn-check { width: 38px; height: 38px; font-size: 17px; }
   .btn-timer { width: 38px; height: 38px; font-size: 16px; }
   .btn-note { width: 38px; height: 38px; font-size: 16px; }
   .btn-delete { width: 30px; height: 30px; font-size: 12px; opacity: 1; }

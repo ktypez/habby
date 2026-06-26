@@ -5,7 +5,6 @@
 
 const API = '/api'
 let habits = []
-let activeFilter = ''
 let xpState = { level: 1, xp: 0, current: 0, needed: 100, progress: 0 }
 let timerIntervals = {}
 let noteTargetId = null
@@ -25,7 +24,6 @@ const totalStreaks = $('#totalStreaks')
 const habitInput = $('#habitInput')
 const addBtn = $('#addHabitBtn')
 const toastContainer = $('#toastContainer')
-const filterBar = $('#filterBar')
 const archiveBar = $('#archiveBar')
 
 // XP DOM
@@ -61,6 +59,9 @@ const noteInput = $('#noteInput')
 const noteSaveBtn = $('#noteSaveBtn')
 const noteDeleteBtn = $('#noteDeleteBtn')
 const noteModalClose = $('#noteModalClose')
+
+// Theme toggle
+const themeBtn = $('#themeBtn')
 
 // Notification modal
 const notifModal = $('#notifModal')
@@ -164,20 +165,6 @@ function calcStreak(dates) {
   return streak
 }
 
-// --- Category helpers ---
-const CATEGORIES = [
-  { id: 'health', label: 'Health', emoji: '❤️', color: '#FF3366' },
-  { id: 'fitness', label: 'Fitness', emoji: '💪', color: '#00FF88' },
-  { id: 'learning', label: 'Learning', emoji: '📚', color: '#00D4FF' },
-  { id: 'mindfulness', label: 'Mindfulness', emoji: '🧘', color: '#9933FF' },
-  { id: 'work', label: 'Work', emoji: '💼', color: '#FF6B35' },
-  { id: 'creativity', label: 'Creativity', emoji: '🎨', color: '#FFD700' },
-  { id: 'social', label: 'Social', emoji: '🗣️', color: '#FF1493' },
-  { id: 'finance', label: 'Finance', emoji: '💰', color: '#00CC66' },
-]
-
-function getCategory(id) { return CATEGORIES.find(c => c.id === id) }
-
 // --- Timer helpers ---
 function formatDuration(seconds) {
   const h = Math.floor(seconds / 3600)
@@ -222,9 +209,6 @@ function getFilteredHabits() {
     if (a.checkedToday !== b.checkedToday) return a.checkedToday ? 1 : -1
     return (b.streak || 0) - (a.streak || 0)
   })
-  if (activeFilter) {
-    sorted = sorted.filter(h => h.category === activeFilter)
-  }
   if (!showArchived) {
     sorted = sorted.filter(h => !h.archived)
   }
@@ -237,9 +221,7 @@ function render(animatingId) {
   if (sorted.length === 0) {
     habitsList.innerHTML = ''
     emptyState.classList.remove('hidden')
-    emptyText.textContent = activeFilter
-      ? `No habits in this category. Add one above!`
-      : 'Add your first habit above and start your streak!'
+    emptyText.textContent = 'Add your first habit above and start your streak!'
     weekSection.style.display = 'none'
   } else {
     emptyState.classList.add('hidden')
@@ -280,8 +262,6 @@ function render(animatingId) {
 function renderHabitCard(h) {
   const weekDays = getWeekDays()
   const checked = h.checkedToday
-  const cat = getCategory(h.category)
-
   const dayLabels = weekDays.map(d => {
     const done = h.dates && h.dates.includes(d.date)
     let cls = 'habit-day-label'
@@ -291,11 +271,6 @@ function renderHabitCard(h) {
   }).join('')
 
   const streakEmoji = h.streak >= 30 ? '💎' : h.streak >= 7 ? '🔥' : h.streak >= 1 ? '🔥' : '·'
-
-  // Category badge
-  const catBadge = cat
-    ? `    <span class="habit-cat-badge" style="background:${cat.color};color:#000">${cat.emoji} ${cat.label}</span>`
-    : ''
 
   // Timer display
   let timerDisplay = ''
@@ -320,7 +295,6 @@ function renderHabitCard(h) {
       <div class="habit-info">
         <div class="habit-name-row">
           <span class="habit-name ${checked ? 'checked-name' : ''}">${escHtml(h.name)}</span>
-          ${catBadge}
         </div>
         <div class="habit-meta">
           <span class="habit-streak"><span class="streak-fire">${streakEmoji}</span> ${h.streak}d</span>
@@ -693,12 +667,8 @@ function renderStats(d) {
       </div>
     </div>
     <div class="stat-card span-2">
-      <span class="stat-label">Categories</span>
-      ${d.catBreakdown.length > 0 ? `<div class="cat-breakdown">${d.catBreakdown.map(c => {
-        const maxCount = Math.max(...d.catBreakdown.map(x => x.count), 1)
-        const width = Math.round((c.count / maxCount) * 100)
-        return `<div class="cat-bar-row"><span class="cat-bar-label">${c.emoji} ${c.label}</span><div class="cat-bar-track"><div class="cat-bar-fill" style="width:${width}%;background:${c.color}"></div></div><span class="cat-bar-count">${c.count}</span></div>`
-      }).join('')}</div>` : '<span class="stat-sub" style="margin-top:8px;display:block">No habits yet</span>'}
+      <span class="stat-label">Habits</span>
+      <span class="stat-sub" style="margin-top:8px;display:block">Create habits and check in daily to build streaks!</span>
     </div>
   `
 }
@@ -709,13 +679,12 @@ async function addHabit() {
   if (!name) { habitInput.focus(); showToast('Enter a habit name', 'error'); return }
 
   const emoji = document.querySelector('.emoji-option.selected')?.dataset.emoji || '✅'
-  const category = document.querySelector('.category-opt.selected')?.dataset.category || ''
   const colors = ['#FF3366', '#00FF88', '#00D4FF', '#FFD700', '#FF6B35', '#9933FF']
   const color = colors[Math.floor(Math.random() * colors.length)]
 
   const tempId = 'temp-' + Date.now()
   habits.push({
-    id: tempId, name, emoji, color, category: category || null,
+    id: tempId, name, emoji, color,
     streak: 0, checkedToday: false, dates: [],
     timerRunning: null, timerTotal: 0, noteToday: null,
     created_at: new Date().toISOString()
@@ -726,9 +695,9 @@ async function addHabit() {
 
   try {
     const data = await api('/habits', {
-      method: 'POST',
-      body: JSON.stringify({ name, emoji, color, category: category || undefined })
-    })
+        method: 'POST',
+        body: JSON.stringify({ name, emoji, color })
+      })
     const idx = habits.findIndex(h => h.id === tempId)
     if (idx !== -1) {
       habits[idx] = { ...data, dates: [], timerRunning: null, timerTotal: 0, noteToday: null }
@@ -749,28 +718,6 @@ function initEmojiPicker() {
     if (!btn) return
     picker.querySelectorAll('.emoji-option').forEach(b => b.classList.remove('selected'))
     btn.classList.add('selected')
-  })
-}
-
-// --- Category Picker & Filter ---
-function initCategoryPicker() {
-  const picker = document.getElementById('categoryPicker')
-  picker.addEventListener('click', (e) => {
-    const btn = e.target.closest('.category-opt')
-    if (!btn) return
-    picker.querySelectorAll('.category-opt').forEach(b => b.classList.remove('selected'))
-    btn.classList.add('selected')
-  })
-}
-
-function initFilterBar() {
-  filterBar.addEventListener('click', (e) => {
-    const btn = e.target.closest('.filter-btn')
-    if (!btn) return
-    filterBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'))
-    btn.classList.add('active')
-    activeFilter = btn.dataset.filter || ''
-    render()
   })
 }
 
@@ -899,6 +846,22 @@ function toggleNotif() {
   saveNotifSettings()
 }
 
+// --- Dark Mode ---
+function initTheme() {
+  const stored = localStorage.getItem('habby-theme')
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  const isDark = stored !== null ? stored === 'dark' : prefersDark
+  document.documentElement.classList.toggle('dark', isDark)
+  themeBtn.textContent = isDark ? '☀️' : '🌙'
+}
+
+function toggleTheme() {
+  const isDark = !document.documentElement.classList.contains('dark')
+  document.documentElement.classList.toggle('dark', isDark)
+  localStorage.setItem('habby-theme', isDark ? 'dark' : 'light')
+  themeBtn.textContent = isDark ? '☀️' : '🌙'
+}
+
 // --- Service Worker ---
 async function registerSw() {
   if ('serviceWorker' in navigator) {
@@ -919,7 +882,6 @@ async function loadHabits() {
     const data = await api('/habits')
     habits = (data.habits || []).map(h => ({
       ...h,
-      category: h.category || null,
       streak: h.streak || calcStreak(h.dates || []),
       timerRunning: h.timerRunning || null,
       timerTotal: h.timerTotal || 0,
@@ -939,9 +901,10 @@ async function loadHabits() {
 // --- Init ---
 function init() {
   initEmojiPicker()
-  initCategoryPicker()
-  initFilterBar()
   initKeyboard()
+  initTheme()
+
+  themeBtn.addEventListener('click', toggleTheme)
 
   addBtn.addEventListener('click', addHabit)
   exportBtn.addEventListener('click', doExport)

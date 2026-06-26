@@ -64,17 +64,6 @@ function calcXpProgress(totalXP) {
   return { level, xp: totalXP, current, needed, progress: current / needed }
 }
 
-// --- Category config ---
-const CATEGORIES = [
-  { id: 'health', label: 'Health', emoji: '❤️', color: '#FF3366' },
-  { id: 'fitness', label: 'Fitness', emoji: '💪', color: '#00FF88' },
-  { id: 'learning', label: 'Learning', emoji: '📚', color: '#00D4FF' },
-  { id: 'mindfulness', label: 'Mindfulness', emoji: '🧘', color: '#9933FF' },
-  { id: 'work', label: 'Work', emoji: '💼', color: '#FF6B35' },
-  { id: 'creativity', label: 'Creativity', emoji: '🎨', color: '#FFD700' },
-  { id: 'social', label: 'Social', emoji: '🗣️', color: '#FF1493' },
-  { id: 'finance', label: 'Finance', emoji: '💰', color: '#00CC66' },
-]
 
 // --- Build habit object helper ---
 async function buildHabit(id) {
@@ -91,7 +80,6 @@ async function buildHabit(id) {
     name: data.name,
     emoji: data.emoji || '✅',
     color: data.color || '#FF3366',
-    category: data.category || null,
     archived: data.archived === 'true',
     created_at: data.created_at,
     streak: calculateStreak(dates, today()),
@@ -109,11 +97,6 @@ async function buildXp() {
 }
 
 // --- API Routes ---
-
-// GET /api/categories
-app.get('/api/categories', (req, res) => {
-  res.json(CATEGORIES)
-})
 
 // GET /api/habits
 app.get('/api/habits', async (req, res) => {
@@ -134,7 +117,7 @@ app.get('/api/habits', async (req, res) => {
 // POST /api/habits
 app.post('/api/habits', async (req, res) => {
   try {
-    const { name, emoji, color, category } = req.body
+    const { name, emoji, color } = req.body
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Habit name is required' })
     }
@@ -145,7 +128,7 @@ app.post('/api/habits', async (req, res) => {
     await redis.pipeline()
       .hset(`habit:${id}`, {
         name: name.trim(), emoji: emoji || '✅',
-        color: color || '#FF3366', category: category || '',
+        color: color || '#FF3366',
         archived: 'false', created_at: now
       })
       .zadd('habits:all', Date.now(), id)
@@ -153,7 +136,7 @@ app.post('/api/habits', async (req, res) => {
 
     res.json({
       id, name: name.trim(), emoji: emoji || '✅',
-      color: color || '#FF3366', category: category || null,
+      color: color || '#FF3366',
       archived: false,
       created_at: now, streak: 0, checkedToday: false, dates: [],
       timerRunning: null, timerTotal: 0, noteToday: null
@@ -400,7 +383,7 @@ app.get('/api/export', async (req, res) => {
       }
       habits.push({
         id, name: data.name, emoji: data.emoji, color: data.color,
-        category: data.category || null,
+
         archived: data.archived === 'true',
         created_at: data.created_at, dates, timerTotal, notes
       })
@@ -453,7 +436,7 @@ app.post('/api/import', async (req, res) => {
         name: String(h.name).trim(),
         emoji: h.emoji || '✅',
         color: h.color || '#FF3366',
-        category: h.category || '',
+        
         archived: h.archived ? 'true' : 'false',
         created_at: h.created_at || new Date().toISOString()
       })
@@ -535,9 +518,6 @@ app.get('/api/stats', async (req, res) => {
     // Per-day check-in count for this week
     const weekDailyCounts = weekDates.map(() => 0)
 
-    // Category breakdown
-    const catCounts = {}
-
     for (const h of active) {
       if (h.streak > bestStreak) {
         bestStreak = h.streak
@@ -552,10 +532,6 @@ app.get('/api/stats', async (req, res) => {
 
       // Count this week's total check-ins
       weekCheckins += habitDates.filter(d => d >= weekDates[0] && d <= todayStr).length
-
-      // Category
-      const cat = h.category || 'uncategorized'
-      catCounts[cat] = (catCounts[cat] || 0) + 1
     }
 
     // Total possible days (since each habit was created)
@@ -566,18 +542,6 @@ app.get('/api/stats', async (req, res) => {
     }
 
     const completionRate = weekTotalDays > 0 ? Math.round((weekCheckins / weekTotalDays) * 100) : 0
-
-    // Category breakdown for chart
-    const catBreakdown = Object.entries(catCounts).map(([catId, count]) => {
-      const catInfo = CATEGORIES.find(c => c.id === catId)
-      return {
-        id: catId,
-        label: catInfo ? catInfo.label : 'Other',
-        emoji: catInfo ? catInfo.emoji : '📋',
-        color: catInfo ? catInfo.color : '#888880',
-        count
-      }
-    }).sort((a, b) => b.count - a.count)
 
     // Weekly XP (estimated from check-ins this week)
     const weekXp = weekCheckins * 15
@@ -594,8 +558,7 @@ app.get('/api/stats', async (req, res) => {
       completionRate,
       weekXp,
       weekDailyCounts,
-      weekDates,
-      catBreakdown
+      weekDates
     })
   } catch (err) {
     console.error('GET /api/stats error:', err)
@@ -660,13 +623,12 @@ app.get('/api/digest', async (req, res) => {
       totalStreaks,
       checked: checked.map(h => ({
         id: h.id, name: h.name, emoji: h.emoji,
-        streak: h.streak, color: h.color, category: h.category,
+        streak: h.streak, color: h.color,
         note: h.noteToday
       })),
       pending: pending.map(h => ({
         id: h.id, name: h.name, emoji: h.emoji,
-        streak: h.streak, color: h.color, category: h.category
-      }))
+        streak: h.streak, color: h.color,      }))
     })
   } catch (err) {
     console.error('GET /api/digest error:', err)

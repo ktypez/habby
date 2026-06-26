@@ -24,6 +24,7 @@
           <div class="header-actions">
             <button class="btn-header-icon" id="digestBtn" title="Daily Digest">📋</button>
             <button class="btn-header-icon" id="statsBtn" title="Statistics">📊</button>
+            <button class="btn-header-icon" id="themeBtn" title="Toggle dark mode">🌙</button>
             <button class="btn-header-icon" id="notifBtn" title="Notification settings">🔔</button>
             <button class="btn-header-icon" id="exportBtn" title="Export data">📤</button>
             <button class="btn-header-icon" id="importBtn" title="Import data">📥</button>
@@ -67,18 +68,7 @@
                 <button class="emoji-option" data-emoji="🎵">🎵</button>
                 <button class="emoji-option" data-emoji="🗣️">🗣️</button>
               </div>
-              <!-- Category picker -->
-              <div class="category-picker" id="categoryPicker">
-                <button class="category-opt selected" data-category="">None</button>
-                <button class="category-opt" data-category="health" style="--cat-color:#FF3366">❤️ Health</button>
-                <button class="category-opt" data-category="fitness" style="--cat-color:#00FF88">💪 Fitness</button>
-                <button class="category-opt" data-category="learning" style="--cat-color:#00D4FF">📚 Learning</button>
-                <button class="category-opt" data-category="mindfulness" style="--cat-color:#9933FF">🧘 Mindfulness</button>
-                <button class="category-opt" data-category="work" style="--cat-color:#FF6B35">💼 Work</button>
-                <button class="category-opt" data-category="creativity" style="--cat-color:#FFD700">🎨 Creativity</button>
-                <button class="category-opt" data-category="social" style="--cat-color:#FF1493">🗣️ Social</button>
-                <button class="category-opt" data-category="finance" style="--cat-color:#00CC66">💰 Finance</button>
-              </div>
+
               <div class="add-habit-input-row">
                 <input type="text" id="habitInput" class="habit-input" placeholder="e.g. Run 5 kilometers..." maxlength="60" autocomplete="off" />
                 <button id="addHabitBtn" class="btn-add">+ ADD</button>
@@ -86,19 +76,6 @@
             </div>
           </div>
         </section>
-
-        <!-- CATEGORY FILTER BAR -->
-        <div class="filter-bar" id="filterBar">
-          <button class="filter-btn active" data-filter="">ALL</button>
-          <button class="filter-btn" data-filter="health" style="--cat-color:#FF3366">❤️</button>
-          <button class="filter-btn" data-filter="fitness" style="--cat-color:#00FF88">💪</button>
-          <button class="filter-btn" data-filter="learning" style="--cat-color:#00D4FF">📚</button>
-          <button class="filter-btn" data-filter="mindfulness" style="--cat-color:#9933FF">🧘</button>
-          <button class="filter-btn" data-filter="work" style="--cat-color:#FF6B35">💼</button>
-          <button class="filter-btn" data-filter="creativity" style="--cat-color:#FFD700">🎨</button>
-          <button class="filter-btn" data-filter="social" style="--cat-color:#FF1493">🗣️</button>
-          <button class="filter-btn" data-filter="finance" style="--cat-color:#00CC66">💰</button>
-        </div>
 
         <!-- TODAY'S HABITS -->
         <section class="habits-section">
