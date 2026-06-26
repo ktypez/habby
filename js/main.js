@@ -31,11 +31,6 @@ const xpLevelBadge = $('#xpLevelBadge')
 const xpBarFill = $('#xpBarFill')
 const xpNumbers = $('#xpNumbers')
 
-// Export/Import
-const exportBtn = $('#exportBtn')
-const importBtn = $('#importBtn')
-const importFileInput = $('#importFileInput')
-
 // Digest
 const digestBtn = $('#digestBtn')
 const digestModal = $('#digestModal')
@@ -59,9 +54,6 @@ const noteInput = $('#noteInput')
 const noteSaveBtn = $('#noteSaveBtn')
 const noteDeleteBtn = $('#noteDeleteBtn')
 const noteModalClose = $('#noteModalClose')
-
-// Theme toggle
-const themeBtn = $('#themeBtn')
 
 // Notification modal
 const notifModal = $('#notifModal')
@@ -739,38 +731,59 @@ function initKeyboard() {
   })
 }
 
-// --- Export ---
-async function doExport() {
-  try {
-    const data = await api('/export')
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = `habby-export-${new Date().toISOString().slice(0, 10)}.json`
-    document.body.appendChild(a); a.click()
-    document.body.removeChild(a); URL.revokeObjectURL(url)
-    showToast(`📤 Exported ${data.habits.length} habits`)
-  } catch (err) { showToast(err.message, 'error') }
+// --- Theme ---
+let currentTheme = localStorage.getItem('habby-theme') || 'default'
+
+const themeDefs = [
+  { id: 'default', label: 'Default', emoji: '🎨', swatches: ['#FF3366', '#00FF88', '#FFD700', '#9933FF'] },
+  { id: 'ocean', label: 'Ocean', emoji: '🌊', swatches: ['#0066CC', '#00BBAA', '#66BBEE', '#2244AA'] },
+  { id: 'sunset', label: 'Sunset', emoji: '🌅', swatches: ['#EE3344', '#FF8800', '#FFCC00', '#CC3377'] },
+  { id: 'forest', label: 'Forest', emoji: '🌲', swatches: ['#2D8B46', '#88CC44', '#DDB822', '#6633CC'] }
+]
+
+function applyTheme(themeId) {
+  currentTheme = themeId
+  if (themeId === 'default') {
+    document.documentElement.removeAttribute('data-theme')
+  } else {
+    document.documentElement.setAttribute('data-theme', themeId)
+  }
+  localStorage.setItem('habby-theme', themeId)
 }
 
-// --- Import ---
-function doImport() { importFileInput.click() }
+function openThemeModal() {
+  const overlay = document.createElement('div')
+  overlay.className = 'modal-overlay'
+  overlay.innerHTML = `
+    <div class="modal-card" style="width:320px">
+      <div class="modal-header">
+        <span class="modal-title">🎨 Theme</span>
+        <button class="modal-close" id="themeModalClose">✕</button>
+      </div>
+      <div class="theme-grid">
+        ${themeDefs.map(t => `
+          <button class="theme-opt ${currentTheme === t.id ? 'active' : ''}" data-theme-id="${t.id}">
+            ${t.emoji}
+            <span>${t.label}</span>
+            <div class="theme-swatches">
+              ${t.swatches.map(s => `<span class="theme-swatch" style="background:${s}"></span>`).join('')}
+            </div>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `
+  document.body.appendChild(overlay)
 
-async function handleImportFile(e) {
-  const file = e.target.files[0]
-  if (!file) return
-  e.target.value = ''
-  try {
-    const text = await file.text()
-    const data = JSON.parse(text)
-    if (!data.habits || !Array.isArray(data.habits)) throw new Error('Invalid file format')
-    const result = await api('/import', {
-      method: 'POST',
-      body: JSON.stringify(data)
+  overlay.querySelectorAll('.theme-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyTheme(btn.dataset.themeId)
+      overlay.remove()
     })
-    await loadHabits()
-    showToast(`📥 Imported ${result.imported} habits!`)
-  } catch (err) { showToast(err.message, 'error') }
+  })
+
+  overlay.querySelector('#themeModalClose').addEventListener('click', () => overlay.remove())
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
 }
 
 // --- Notifications ---
@@ -846,22 +859,6 @@ function toggleNotif() {
   saveNotifSettings()
 }
 
-// --- Dark Mode ---
-function initTheme() {
-  const stored = localStorage.getItem('habby-theme')
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  const isDark = stored !== null ? stored === 'dark' : prefersDark
-  document.documentElement.classList.toggle('dark', isDark)
-  themeBtn.textContent = isDark ? '☀️' : '🌙'
-}
-
-function toggleTheme() {
-  const isDark = !document.documentElement.classList.contains('dark')
-  document.documentElement.classList.toggle('dark', isDark)
-  localStorage.setItem('habby-theme', isDark ? 'dark' : 'light')
-  themeBtn.textContent = isDark ? '☀️' : '🌙'
-}
-
 // --- Service Worker ---
 async function registerSw() {
   if ('serviceWorker' in navigator) {
@@ -902,14 +899,8 @@ async function loadHabits() {
 function init() {
   initEmojiPicker()
   initKeyboard()
-  initTheme()
-
-  themeBtn.addEventListener('click', toggleTheme)
 
   addBtn.addEventListener('click', addHabit)
-  exportBtn.addEventListener('click', doExport)
-  importBtn.addEventListener('click', doImport)
-  importFileInput.addEventListener('change', handleImportFile)
 
   // Archive
   archiveToggle.addEventListener('click', toggleShowArchived)
@@ -930,6 +921,10 @@ function init() {
   noteModalClose.addEventListener('click', closeNoteModal)
   noteModal.addEventListener('click', (e) => { if (e.target === noteModal) closeNoteModal() })
 
+  // Theme picker
+  const themeBtn = document.getElementById('themeBtn')
+  if (themeBtn) themeBtn.addEventListener('click', openThemeModal)
+
   // Notification modal
   notifBtn.addEventListener('click', openNotifModal)
   notifModalClose.addEventListener('click', closeNotifModal)
@@ -944,6 +939,7 @@ function init() {
   })
 
   registerSw()
+  applyTheme(currentTheme)
   loadNotifSettings()
   loadHabits()
 }

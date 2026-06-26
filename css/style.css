@@ -28,7 +28,6 @@
   --text-muted: #666660;
   --border: var(--black);
   --shadow: var(--black);
-  --radius: 0px;
 
   --font-display: 'Space Grotesk', 'DM Sans', sans-serif;
   --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
@@ -36,36 +35,40 @@
   --border-w: 4px;
   --shadow-x: 6px;
   --shadow-y: 6px;
-
-  /* Dark mode overrides (applied via .dark on <html>) */
-  --dark-bg: #121212;
-  --dark-card-bg: #1e1e1e;
-  --dark-off-bg: #252525;
-  --dark-text: #e8e8e8;
-  --dark-text-muted: #999999;
-  --dark-border: #e8e8e8;
-  --dark-shadow: #e8e8e8;
-  --dark-gray: #333333;
-  --dark-checked: #0a2e1a;
 }
 
-html.dark {
-  --bg: var(--dark-bg);
-  --card-bg: var(--dark-card-bg);
-  --off-white: var(--dark-off-bg);
-  --text: var(--dark-text);
-  --text-muted: var(--dark-text-muted);
-  --border: var(--dark-border);
-  --shadow: var(--dark-shadow);
-  --gray: var(--dark-gray);
-  --gray-dark: var(--dark-text-muted);
-  --black: var(--dark-text);
-  --white: var(--dark-card-bg);
+/* ============================================
+   THEMES
+   ============================================ */
+
+/* Ocean — cool blues */
+html[data-theme="ocean"] {
+  --pink: #0066CC;
+  --lime: #00BBAA;
+  --cyan: #3399FF;
+  --yellow: #66BBEE;
+  --orange: #005599;
+  --purple: #2244AA;
 }
 
-html.dark .stat-badge,
-html.dark .xp-level-badge {
-  color: var(--dark-text);
+/* Sunset — warm tones */
+html[data-theme="sunset"] {
+  --pink: #EE3344;
+  --lime: #FF8800;
+  --cyan: #FFAA44;
+  --yellow: #FFCC00;
+  --orange: #FF3300;
+  --purple: #CC3377;
+}
+
+/* Forest — earthy greens */
+html[data-theme="forest"] {
+  --pink: #2D8B46;
+  --lime: #88CC44;
+  --cyan: #44AADD;
+  --yellow: #DDB822;
+  --orange: #BB7722;
+  --purple: #6633CC;
 }
 
 html {
@@ -109,23 +112,11 @@ input, textarea { font-family: inherit; }
 
 .header-title {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 900;
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
   text-transform: uppercase;
   color: var(--black);
-}
-
-.header-badge {
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 2px 8px;
-  background: var(--yellow);
-  border: 3px solid var(--black);
-  color: var(--black);
-  line-height: 1.4;
 }
 
 .header-actions { display: flex; align-items: center; gap: 6px; }
@@ -357,7 +348,7 @@ input, textarea { font-family: inherit; }
 }
 .habit-card:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--shadow); }
 .habit-card.checked { background: #f0fff0; }
-html.dark .habit-card.checked { background: var(--dark-checked); }
+
 .habit-card.just-checked .btn-check { animation: spin 0.6s ease; }
 
 .habit-emoji { font-size: 28px; line-height: 1; width: 38px; text-align: center; flex-shrink: 0; }
@@ -974,6 +965,46 @@ html.dark .habit-card.checked { background: var(--dark-checked); }
 }
 
 /* ============================================
+   THEME PICKER
+   ============================================ */
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.theme-opt {
+  padding: 16px 12px;
+  border: 3px solid var(--black);
+  background: var(--white);
+  cursor: pointer;
+  transition: all 0.1s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.theme-opt:hover { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--shadow); }
+.theme-opt:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
+.theme-opt.active { background: var(--black); color: var(--white); }
+
+.theme-swatches {
+  display: flex;
+  gap: 4px;
+}
+.theme-swatch {
+  width: 16px; height: 16px;
+  border: 2px solid var(--black);
+}
+
+/* ============================================
    TOAST
    ============================================ */
 
@@ -1022,7 +1053,6 @@ html.dark .habit-card.checked { background: var(--dark-checked); }
   .header-inner { padding: 8px 12px; }
   .header-title { font-size: 20px; }
   .header-logo { font-size: 22px; }
-  .header-badge { font-size: 10px; }
   .xp-header-inner { padding: 6px 12px; gap: 6px; }
   .xp-level-badge { font-size: 11px; padding: 2px 8px; }
   .xp-bar-track { height: 16px; }
