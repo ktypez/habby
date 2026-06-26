@@ -72,31 +72,6 @@ html[data-theme="forest"] {
   --purple: #6633CC;
 }
 
-/* Dark — true dark mode */
-html[data-theme="dark"] {
-  --black: #e8e8e8;
-  --white: #1e1e1e;
-  --off-white: #252525;
-  --gray: #3a3a3a;
-  --gray-dark: #666666;
-  --text-muted: #999999;
-  --bg: #121212;
-  --card-bg: #1e1e1e;
-  --text: var(--black);
-  --shadow: #000000;
-  --accent-text: #ffffff;
-  --pink: #FF4466;
-  --lime: #00FF88;
-  --cyan: #44DDFF;
-  --yellow: #FFDD44;
-  --orange: #FF8844;
-  --purple: #BB66FF;
-}
-html[data-theme="dark"] .habit-card.checked { background: #1a2e1a; }
-html[data-theme="dark"] .toast { background: #2a2a2a; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
-html[data-theme="dark"] .theme-opt.active { background: #c8c8c8; color: #1a1a1a; }
-html[data-theme="dark"] .login-btn { background: #333; color: #fff; }
-
 /* Midnight — deep dark with cool purple/blue accents */
 html[data-theme="midnight"] {
   --black: #e0e0f0;
@@ -1048,7 +1023,7 @@ input, textarea { font-family: inherit; }
 
 .theme-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 

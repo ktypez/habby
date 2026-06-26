@@ -707,7 +707,6 @@ const themeDefs = [
   { id: 'ocean', label: 'Ocean', emoji: '🌊', swatches: ['#0066CC', '#00BBAA', '#66BBEE', '#2244AA'] },
   { id: 'sunset', label: 'Sunset', emoji: '🌅', swatches: ['#EE3344', '#FF8800', '#FFCC00', '#CC3377'] },
   { id: 'forest', label: 'Forest', emoji: '🌲', swatches: ['#2D8B46', '#88CC44', '#DDB822', '#6633CC'] },
-  { id: 'dark', label: 'Dark', emoji: '🌙', swatches: ['#FF4466', '#00FF88', '#FFDD44', '#BB66FF'] },
   { id: 'midnight', label: 'Midnight', emoji: '🌃', swatches: ['#8844FF', '#44DDBB', '#AAAAFF', '#AA66FF'] }
 ]
 
