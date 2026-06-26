@@ -3,277 +3,202 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Habby — Gamification UI Kit</title>
-    <meta name="description" content="Open-source gamification UI components. Streaks, achievements, leaderboards, and more." />
-    <meta name="theme-color" content="#09090b" />
+    <title>HABBY — Habits & Streaks</title>
+    <meta name="description" content="Track your habits, build streaks, level up." />
+    <meta name="theme-color" content="#ffffff" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700;900&family=Space+Grotesk:wght@700;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
-    <nav class="nav">
-      <div class="nav-inner">
-        <a href="/" class="nav-brand">
-          <div class="nav-logo">🎯</div>
-          Habby
-        </a>
-        <div class="nav-links">
-          <a href="#components" class="nav-link">Components</a>
-          <a href="#built" class="nav-link">Docs</a>
-          <a href="https://github.com" class="nav-link" target="_blank" rel="noopener">GitHub</a>
+    <div id="app">
+      <!-- HEADER -->
+      <header class="header">
+        <div class="header-inner">
+          <div class="header-brand">
+            <span class="header-logo">🎯</span>
+            <span class="header-title">HABBY</span>
+            <span class="header-badge">BETA</span>
+          </div>
+          <div class="header-actions">
+            <button class="btn-header-icon" id="digestBtn" title="Daily Digest">📋</button>
+            <button class="btn-header-icon" id="statsBtn" title="Statistics">📊</button>
+            <button class="btn-header-icon" id="notifBtn" title="Notification settings">🔔</button>
+            <button class="btn-header-icon" id="exportBtn" title="Export data">📤</button>
+            <button class="btn-header-icon" id="importBtn" title="Import data">📥</button>
+            <input type="file" id="importFileInput" accept=".json" style="display:none" />
+            <span class="stat-badge" id="totalStreaks">🔥 0</span>
+          </div>
+        </div>
+        <!-- XP Bar -->
+        <div class="xp-header" id="xpHeader">
+          <div class="xp-header-inner">
+            <span class="xp-level-badge" id="xpLevelBadge">LVL 1</span>
+            <div class="xp-bar-track">
+              <div class="xp-bar-fill" id="xpBarFill" style="width:0%"></div>
+            </div>
+            <span class="xp-numbers" id="xpNumbers">0 / 100 XP</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="main">
+        <!-- ADD HABIT FORM -->
+        <section class="add-habit-section">
+          <div class="add-habit-card">
+            <h2 class="add-habit-title">NEW HABIT</h2>
+            <div class="add-habit-form">
+              <div class="emoji-picker" id="emojiPicker">
+                <button class="emoji-option selected" data-emoji="🏃">🏃</button>
+                <button class="emoji-option" data-emoji="📚">📚</button>
+                <button class="emoji-option" data-emoji="💧">💧</button>
+                <button class="emoji-option" data-emoji="🧘">🧘</button>
+                <button class="emoji-option" data-emoji="✍️">✍️</button>
+                <button class="emoji-option" data-emoji="💪">💪</button>
+                <button class="emoji-option" data-emoji="🥗">🥗</button>
+                <button class="emoji-option" data-emoji="🧠">🧠</button>
+                <button class="emoji-option" data-emoji="🎨">🎨</button>
+                <button class="emoji-option" data-emoji="🧹">🧹</button>
+                <button class="emoji-option" data-emoji="🌅">🌅</button>
+                <button class="emoji-option" data-emoji="🌙">🌙</button>
+                <button class="emoji-option" data-emoji="☕">☕</button>
+                <button class="emoji-option" data-emoji="🚶">🚶</button>
+                <button class="emoji-option" data-emoji="🎵">🎵</button>
+                <button class="emoji-option" data-emoji="🗣️">🗣️</button>
+              </div>
+              <!-- Category picker -->
+              <div class="category-picker" id="categoryPicker">
+                <button class="category-opt selected" data-category="">None</button>
+                <button class="category-opt" data-category="health" style="--cat-color:#FF3366">❤️ Health</button>
+                <button class="category-opt" data-category="fitness" style="--cat-color:#00FF88">💪 Fitness</button>
+                <button class="category-opt" data-category="learning" style="--cat-color:#00D4FF">📚 Learning</button>
+                <button class="category-opt" data-category="mindfulness" style="--cat-color:#9933FF">🧘 Mindfulness</button>
+                <button class="category-opt" data-category="work" style="--cat-color:#FF6B35">💼 Work</button>
+                <button class="category-opt" data-category="creativity" style="--cat-color:#FFD700">🎨 Creativity</button>
+                <button class="category-opt" data-category="social" style="--cat-color:#FF1493">🗣️ Social</button>
+                <button class="category-opt" data-category="finance" style="--cat-color:#00CC66">💰 Finance</button>
+              </div>
+              <div class="add-habit-input-row">
+                <input type="text" id="habitInput" class="habit-input" placeholder="e.g. Run 5 kilometers..." maxlength="60" autocomplete="off" />
+                <button id="addHabitBtn" class="btn-add">+ ADD</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CATEGORY FILTER BAR -->
+        <div class="filter-bar" id="filterBar">
+          <button class="filter-btn active" data-filter="">ALL</button>
+          <button class="filter-btn" data-filter="health" style="--cat-color:#FF3366">❤️</button>
+          <button class="filter-btn" data-filter="fitness" style="--cat-color:#00FF88">💪</button>
+          <button class="filter-btn" data-filter="learning" style="--cat-color:#00D4FF">📚</button>
+          <button class="filter-btn" data-filter="mindfulness" style="--cat-color:#9933FF">🧘</button>
+          <button class="filter-btn" data-filter="work" style="--cat-color:#FF6B35">💼</button>
+          <button class="filter-btn" data-filter="creativity" style="--cat-color:#FFD700">🎨</button>
+          <button class="filter-btn" data-filter="social" style="--cat-color:#FF1493">🗣️</button>
+          <button class="filter-btn" data-filter="finance" style="--cat-color:#00CC66">💰</button>
+        </div>
+
+        <!-- TODAY'S HABITS -->
+        <section class="habits-section">
+          <div class="section-head">
+            <h2 class="section-title">TODAY</h2>
+            <span class="section-sub" id="habitsCount">0 habits</span>
+          </div>
+          <div class="habits-list" id="habitsList">
+            <!-- Populated by JS -->
+          </div>
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon">✨</div>
+            <h3 class="empty-title">No habits yet</h3>
+            <p class="empty-text" id="emptyText">Add your first habit above and start your streak!</p>
+          </div>
+        </section>
+
+        <!-- THIS WEEK OVERVIEW -->
+        <section class="week-section" id="weekSection">
+          <div class="section-head">
+            <h2 class="section-title">THIS WEEK</h2>
+          </div>
+          <div class="week-grid" id="weekGrid">
+            <!-- Populated by JS -->
+          </div>
+        </section>
+      </main>
+
+      <!-- NOTE MODAL -->
+      <div class="modal-overlay hidden" id="noteModal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <span class="modal-title" id="noteModalTitle">📝 Add Note</span>
+            <button class="modal-close" id="noteModalClose">✕</button>
+          </div>
+          <textarea class="note-input" id="noteInput" placeholder="How did it go? Any reflections?" maxlength="500" rows="4"></textarea>
+          <div class="modal-actions">
+            <button class="btn-modal secondary" id="noteDeleteBtn">DELETE</button>
+            <button class="btn-modal primary" id="noteSaveBtn">SAVE</button>
+          </div>
         </div>
       </div>
-    </nav>
 
-    <section class="hero">
-      <div class="hero-badge">
-        ★ <span>19,845</span> stars on GitHub
+      <!-- ARCHIVE TOGGLE BAR -->
+      <div class="archive-bar" id="archiveBar">
+        <button class="archive-toggle" id="archiveToggle">📦 Show Archived (<span id="archiveCount">0</span>)</button>
       </div>
-      <h1>Gamification UI Kit<br /><span class="gradient">by Habby</span></h1>
-      <p class="hero-sub">An open-source library of gamification UI components. Drop-in components for streaks, achievements, leaderboards, points, and more — ready to copy and customize.</p>
-      <div class="hero-actions">
-        <a href="#components" class="btn btn-primary">Get Started</a>
-        <a href="https://github.com" class="btn btn-outline" target="_blank" rel="noopener">★ Star on GitHub</a>
-      </div>
-    </section>
 
-    <section class="showcase">
-      <div class="showcase-grid">
-
-        <div class="g-card xp-card">
-          <div class="xp-number">19,845</div>
-          <div class="xp-label">Total XP</div>
-        </div>
-
-        <div class="g-card streak-card">
-          <div class="streak-top">
-            <span class="streak-fire">🔥</span>
-            <div>
-              <div class="streak-days">12</div>
-              <div class="streak-unit">day streak</div>
-            </div>
+      <!-- DIGEST MODAL -->
+      <div class="modal-overlay hidden" id="digestModal">
+        <div class="modal-card modal-card-wide">
+          <div class="modal-header">
+            <span class="modal-title" id="digestTitle">📋 Today's Digest</span>
+            <button class="modal-close" id="digestModalClose">✕</button>
           </div>
-          <div class="streak-bar"><div class="streak-bar-fill"></div></div>
-        </div>
-
-        <div class="g-card tasks-card">
-          <div class="tasks-number">250</div>
-          <div class="tasks-label">tasks completed</div>
-        </div>
-
-        <div class="g-card leaderboard-card">
-          <div class="card-header">
-            <h3>Leaderboard</h3>
-            <span class="card-header-meta">This Week</span>
+          <div id="digestContent">
+            <!-- Populated by JS -->
           </div>
-          <div class="lb-row">
-            <span class="lb-rank gold">1</span>
-            <div class="lb-avatar"><img src="https://i.pravatar.cc/96?img=32" alt="" /></div>
-            <div class="lb-info"><div class="lb-name">Ava Turner</div><div class="lb-tier">Diamond</div></div>
-            <span class="lb-xp">286.9k</span>
-          </div>
-          <div class="lb-row">
-            <span class="lb-rank silver">2</span>
-            <div class="lb-avatar"><img src="https://i.pravatar.cc/96?img=12" alt="" /></div>
-            <div class="lb-info"><div class="lb-name">Leo Harrison</div><div class="lb-tier">Platinum</div></div>
-            <span class="lb-xp">281.4k</span>
-          </div>
-          <div class="lb-row">
-            <span class="lb-rank bronze">3</span>
-            <div class="lb-avatar"><img src="https://i.pravatar.cc/96?img=15" alt="" /></div>
-            <div class="lb-info"><div class="lb-name">Rowan Elijah</div><div class="lb-tier">Platinum</div></div>
-            <span class="lb-xp">274.5k</span>
-          </div>
-          <div class="lb-row">
-            <span class="lb-rank">5</span>
-            <div class="lb-avatar"><img src="https://i.pravatar.cc/96?img=29" alt="" /></div>
-            <div class="lb-info"><div class="lb-name">Emma Johnson</div><div class="lb-tier">Gold</div></div>
-            <span class="lb-xp">216.7k</span>
-          </div>
-        </div>
-
-        <div class="g-card chart-card">
-          <div class="card-header">
-            <h3>Points Progress</h3>
-            <div class="chart-tabs">
-              <button class="chart-tab active">7D</button>
-              <button class="chart-tab">4W</button>
-              <button class="chart-tab">3M</button>
-            </div>
-          </div>
-          <div class="chart-bars">
-            <div class="chart-bar" style="height:35%"></div>
-            <div class="chart-bar" style="height:55%"></div>
-            <div class="chart-bar" style="height:40%"></div>
-            <div class="chart-bar" style="height:70%"></div>
-            <div class="chart-bar" style="height:50%"></div>
-            <div class="chart-bar accent" style="height:85%"></div>
-            <div class="chart-bar accent" style="height:100%"></div>
-          </div>
-        </div>
-
-        <div class="g-card achievement-card">
-          <div class="card-header">
-            <h3>Achievements</h3>
-            <span class="card-header-meta">4 / 8 unlocked</span>
-          </div>
-          <div class="achievement-grid">
-            <div class="achievement-item">
-              <div class="achievement-icon unlocked">🌱</div>
-              <div class="achievement-name">First Step</div>
-              <div class="achievement-desc">Start a streak</div>
-            </div>
-            <div class="achievement-item">
-              <div class="achievement-icon unlocked">🔥</div>
-              <div class="achievement-name">On Fire</div>
-              <div class="achievement-desc">7 day streak</div>
-            </div>
-            <div class="achievement-item">
-              <div class="achievement-icon unlocked">⚡</div>
-              <div class="achievement-name">Speedrun</div>
-              <div class="achievement-desc">10 tasks in a day</div>
-            </div>
-            <div class="achievement-item">
-              <div class="achievement-icon unlocked">🏆</div>
-              <div class="achievement-name">Champion</div>
-              <div class="achievement-desc">Reach level 5</div>
-            </div>
-            <div class="achievement-item locked">
-              <div class="achievement-icon locked-icon">🌙</div>
-              <div class="achievement-name">Night Owl</div>
-              <div class="achievement-desc">Complete at midnight</div>
-            </div>
-            <div class="achievement-item locked">
-              <div class="achievement-icon locked-icon">💎</div>
-              <div class="achievement-name">Diamond</div>
-              <div class="achievement-desc">1000 tasks total</div>
-            </div>
-            <div class="achievement-item locked">
-              <div class="achievement-icon locked-icon">🌍</div>
-              <div class="achievement-name">Global</div>
-              <div class="achievement-desc">Top 100 leaderboard</div>
-            </div>
-            <div class="achievement-item locked">
-              <div class="achievement-icon locked-icon">👑</div>
-              <div class="achievement-name">Legend</div>
-              <div class="achievement-desc">365 day streak</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="g-card progress-card">
-          <div class="progress-level">Level 12</div>
-          <div class="progress-title">Your Progress</div>
-          <div class="progress-bar-lg"><div class="progress-bar-lg-fill"></div></div>
-          <div class="progress-meta">
-            <span>1,984 XP</span>
-            <span>3,000 XP</span>
-          </div>
-          <div class="tier-list">
-            <div class="tier-row"><span class="tier-range">0–499</span><span class="tier-name">Beginner</span></div>
-            <div class="tier-row"><span class="tier-range">500–999</span><span class="tier-name">Novice</span></div>
-            <div class="tier-row"><span class="tier-range">1,000–1,499</span><span class="tier-name">Intermediate</span></div>
-            <div class="tier-row active"><span class="tier-range">1,500–1,999</span><span class="tier-name">Professional</span></div>
-            <div class="tier-row"><span class="tier-range">2,000–2,499</span><span class="tier-name">Expert</span></div>
-            <div class="tier-row"><span class="tier-range">2,500–2,999</span><span class="tier-name">Master</span></div>
-          </div>
-        </div>
-
-        <div class="g-card promo-card">
-          <div class="promo-badge">Double XP Weekend</div>
-          <p>Enjoy double XP on all activity this weekend.</p>
-          <div class="promo-timer">Ends in <strong>47h 59m 59s</strong></div>
-        </div>
-
-      </div>
-    </section>
-
-    <section class="features" id="components">
-      <div class="section-header">
-        <h2>Gamification UI Components</h2>
-        <p>Production-ready gamification components — streak trackers, achievement badges, leaderboards, points displays, and more.</p>
-      </div>
-      <div class="features-grid">
-        <a href="#" class="feature-card">
-          <div class="feature-icon streak">🔥</div>
-          <h3>Streak Components</h3>
-          <p>Keep users coming back with streak tracking UI. Display daily streaks, calendars, and badges that motivate consistent engagement.</p>
-          <div class="feature-tags">
-            <span class="feature-tag">Streak Card</span>
-            <span class="feature-tag">Calendar</span>
-            <span class="feature-tag">Badge</span>
-          </div>
-        </a>
-        <a href="#" class="feature-card">
-          <div class="feature-icon achieve">🏆</div>
-          <h3>Achievement Components</h3>
-          <p>Celebrate milestones with badges, unlock animations, and achievement grids. Give users a sense of progress.</p>
-          <div class="feature-tags">
-            <span class="feature-tag">Badge</span>
-            <span class="feature-tag">Card</span>
-            <span class="feature-tag">Grid</span>
-            <span class="feature-tag">List</span>
-          </div>
-        </a>
-        <a href="#" class="feature-card">
-          <div class="feature-icon leader">📊</div>
-          <h3>Leaderboard Components</h3>
-          <p>Drive competition with rankings, podium displays, and leaderboard cards. Show users where they stand.</p>
-          <div class="feature-tags">
-            <span class="feature-tag">Rankings</span>
-            <span class="feature-tag">Podium</span>
-            <span class="feature-tag">Card</span>
-          </div>
-        </a>
-        <a href="#" class="feature-card">
-          <div class="feature-icon points">⚡</div>
-          <h3>Points & Levels</h3>
-          <p>Reward actions with points badges, level timelines, charts, and boost indicators.</p>
-          <div class="feature-tags">
-            <span class="feature-tag">Points Badge</span>
-            <span class="feature-tag">Chart</span>
-            <span class="feature-tag">Timeline</span>
-            <span class="feature-tag">Boost</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="built" id="built">
-      <div class="section-header">
-        <h2>Built for Developers</h2>
-        <p>Everything you need to ship gamification fast.</p>
-      </div>
-      <div class="built-grid">
-        <div class="built-card">
-          <div class="built-icon">⚡</div>
-          <h3>One-Command Install</h3>
-          <p>Add any component to your project with a single CLI command. No extra dependencies to manage.</p>
-        </div>
-        <div class="built-card">
-          <div class="built-icon">🎨</div>
-          <h3>Fully Customizable</h3>
-          <p>Every component lives in your codebase. Tweak styles, layout, and behavior to match your brand.</p>
-        </div>
-        <div class="built-card">
-          <div class="built-icon">📖</div>
-          <h3>Open Source</h3>
-          <p>MIT licensed and community-driven. Use in personal projects or production apps without restrictions.</p>
         </div>
       </div>
-    </section>
 
-    <footer class="footer">
-      <div class="footer-inner">
-        <span class="footer-text">Built by Habby. Open source.</span>
-        <div class="footer-links">
-          <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
-          <a href="#">Docs</a>
-          <a href="#components">Components</a>
+      <!-- STATS DASHBOARD MODAL -->
+      <div class="modal-overlay hidden" id="statsModal">
+        <div class="modal-card modal-card-wide">
+          <div class="modal-header">
+            <span class="modal-title">📊 STATS</span>
+            <button class="modal-close" id="statsModalClose">✕</button>
+          </div>
+          <div class="stats-grid" id="statsGrid">
+            <!-- Populated by JS -->
+          </div>
         </div>
       </div>
-    </footer>
+
+      <!-- NOTIFICATION SETTINGS MODAL -->
+      <div class="modal-overlay hidden" id="notifModal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <span class="modal-title">🔔 Reminders</span>
+            <button class="modal-close" id="notifModalClose">✕</button>
+          </div>
+          <div class="notif-form">
+            <label class="notif-toggle-row">
+              <span>Daily reminder</span>
+              <div class="toggle-track" id="notifToggle">
+                <div class="toggle-knob"></div>
+              </div>
+            </label>
+            <label class="notif-time-row">
+              <span>Reminder time</span>
+              <input type="time" id="notifTime" class="notif-time-input" value="09:00" />
+            </label>
+            <button class="btn-modal primary" id="notifTestBtn" style="width:100%;margin-top:8px">🔔 TEST NOTIFICATION</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOAST -->
+      <div class="toast-container" id="toastContainer"></div>
+    </div>
 
     <script type="module" src="/js/main.js"></script>
   </body>
