@@ -95,6 +95,7 @@ html[data-theme="dark"] {
 html[data-theme="dark"] .habit-card.checked { background: #1a2e1a; }
 html[data-theme="dark"] .toast { background: #2a2a2a; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
 html[data-theme="dark"] .theme-opt.active { background: #c8c8c8; color: #1a1a1a; }
+html[data-theme="dark"] .login-btn { background: #333; color: #fff; }
 
 /* Midnight — deep dark with cool purple/blue accents */
 html[data-theme="midnight"] {
@@ -119,6 +120,7 @@ html[data-theme="midnight"] {
 html[data-theme="midnight"] .habit-card.checked { background: #1a1a3a; }
 html[data-theme="midnight"] .toast { background: #1c1c2a; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
 html[data-theme="midnight"] .theme-opt.active { background: #c0c0e0; color: #0c0c20; }
+html[data-theme="midnight"] .login-btn { background: #2a2a4a; color: #e0d0ff; }
 
 html {
   font-family: var(--font-body);
