@@ -71,6 +71,48 @@ html[data-theme="forest"] {
   --purple: #6633CC;
 }
 
+/* Dark — true dark mode */
+html[data-theme="dark"] {
+  --black: #e8e8e8;
+  --white: #1e1e1e;
+  --off-white: #252525;
+  --gray: #3a3a3a;
+  --gray-dark: #666666;
+  --text-muted: #999999;
+  --bg: #121212;
+  --card-bg: #1e1e1e;
+  --text: var(--black);
+  --shadow: #000000;
+  --pink: #FF4466;
+  --lime: #00FF88;
+  --cyan: #44DDFF;
+  --yellow: #FFDD44;
+  --orange: #FF8844;
+  --purple: #BB66FF;
+}
+html[data-theme="dark"] .habit-card.checked { background: #1a2e1a; }
+
+/* Midnight — deep dark with cool purple/blue accents */
+html[data-theme="midnight"] {
+  --black: #e0e0f0;
+  --white: #141428;
+  --off-white: #1c1c38;
+  --gray: #2a2a4a;
+  --gray-dark: #555577;
+  --text-muted: #8888aa;
+  --bg: #0c0c20;
+  --card-bg: #141428;
+  --text: var(--black);
+  --shadow: #000022;
+  --pink: #8844FF;
+  --lime: #44DDBB;
+  --cyan: #66AAFF;
+  --yellow: #AAAAFF;
+  --orange: #6644CC;
+  --purple: #AA66FF;
+}
+html[data-theme="midnight"] .habit-card.checked { background: #1a1a3a; }
+
 html {
   font-family: var(--font-body);
   color: var(--text);
@@ -674,70 +716,6 @@ input, textarea { font-family: inherit; }
 .notif-time-input:focus { box-shadow: 2px 2px 0 var(--shadow); }
 
 /* ============================================
-   ARCHIVE
-   ============================================ */
-
-.archive-bar {
-  margin-bottom: 12px;
-  display: flex;
-  gap: 8px;
-}
-
-.archive-toggle {
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 900;
-  font-family: var(--font-display);
-  letter-spacing: 1px;
-  background: var(--white);
-  border: 3px solid var(--black);
-  color: var(--text-muted);
-  transition: all 0.1s ease;
-  line-height: 1;
-}
-
-.archive-toggle:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 3px 3px 0 var(--shadow);
-}
-
-.archive-toggle.active {
-  background: var(--black);
-  color: var(--white);
-}
-
-.habit-card.archived {
-  opacity: 0.6;
-  border-color: var(--gray-dark);
-  box-shadow: 3px 3px 0 var(--gray-dark);
-  background: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 8px,
-    rgba(255,255,255,0.04) 8px,
-    rgba(255,255,255,0.04) 16px
-  );
-}
-
-.habit-card.archived:hover {
-  opacity: 0.8;
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--gray-dark);
-}
-
-.btn-archive {
-  font-size: 15px;
-  background: none;
-  border: none;
-  padding: 4px;
-  line-height: 1;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-.habit-card:hover .btn-archive { opacity: 0.6; }
-.btn-archive:hover { opacity: 1; }
-
-/* ============================================
    DIGEST
    ============================================ */
 
@@ -970,7 +948,7 @@ input, textarea { font-family: inherit; }
 
 .theme-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
@@ -1077,8 +1055,6 @@ input, textarea { font-family: inherit; }
   .btn-timer { font-size: 16px; }
   .btn-note { font-size: 16px; }
   .btn-delete { font-size: 13px; opacity: 0.6; }
-  .btn-archive { font-size: 13px; opacity: 0.6; }
-
   .week-day { width: 28px; height: 28px; font-size: 8px; }
   .habit-day-label { width: 12px; height: 12px; font-size: 7px; }
 
@@ -1090,7 +1066,6 @@ input, textarea { font-family: inherit; }
   .stat-value { font-size: 26px; }
   .stat-bars { height: 48px; }
   .digest-stats-row { grid-template-columns: repeat(2, 1fr); }
-  .btn-archive { width: 30px; height: 30px; font-size: 12px; opacity: 1; }
 
   .level-up-card { padding: 28px 24px; margin: 0 16px; }
   .level-up-emoji { font-size: 48px; }

@@ -180,19 +180,6 @@ app.delete('/api/habits/:id', async (req, res) => {
   }
 })
 
-// PUT /api/habits/:id/archive
-app.put('/api/habits/:id/archive', async (req, res) => {
-  try {
-    const { id } = req.params
-    const { archived } = req.body
-    await redis.hset(`habit:${id}`, 'archived', archived ? 'true' : 'false')
-    res.json({ success: true, archived: !!archived })
-  } catch (err) {
-    console.error('PUT /api/habits/:id/archive error:', err)
-    res.status(500).json({ error: 'Failed to update archive status' })
-  }
-})
-
 // POST /api/habits/:id/checkin
 app.post('/api/habits/:id/checkin', async (req, res) => {
   try {

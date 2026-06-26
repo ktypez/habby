@@ -24,7 +24,6 @@ const totalStreaks = $('#totalStreaks')
 const habitInput = $('#habitInput')
 const addBtn = $('#addHabitBtn')
 const toastContainer = $('#toastContainer')
-const archiveBar = $('#archiveBar')
 
 // XP DOM
 const xpLevelBadge = $('#xpLevelBadge')
@@ -42,10 +41,6 @@ const statsBtn = $('#statsBtn')
 const statsModal = $('#statsModal')
 const statsGrid = $('#statsGrid')
 const statsModalClose = $('#statsModalClose')
-
-// Archive
-const archiveToggle = $('#archiveToggle')
-const archiveCount = $('#archiveCount')
 
 // Note modal
 const noteModal = $('#noteModal')
@@ -196,15 +191,10 @@ function stopTimerInterval(id) {
 
 // --- Render ---
 function getFilteredHabits() {
-  let sorted = [...habits].sort((a, b) => {
-    if (a.archived !== b.archived) return a.archived ? 1 : -1
+  return [...habits].sort((a, b) => {
     if (a.checkedToday !== b.checkedToday) return a.checkedToday ? 1 : -1
     return (b.streak || 0) - (a.streak || 0)
   })
-  if (!showArchived) {
-    sorted = sorted.filter(h => !h.archived)
-  }
-  return sorted
 }
 
 function render(animatingId) {
@@ -225,12 +215,6 @@ function render(animatingId) {
   const total = sorted.reduce((sum, h) => sum + (h.streak || 0), 0)
   totalStreaks.textContent = `🔥 ${total}`
   habitsCount.textContent = `${sorted.length} habit${sorted.length !== 1 ? 's' : ''}`
-
-  // Archive count and visibility
-  const archivedCount = habits.filter(h => h.archived).length
-  archiveCount.textContent = archivedCount
-  archiveToggle.classList.toggle('active', showArchived)
-  archiveBar.style.display = archivedCount > 0 ? 'flex' : 'none'
 
   sorted.forEach(h => {
     const card = document.querySelector(`[data-id="${h.id}"]`)
@@ -282,7 +266,7 @@ function renderHabitCard(h) {
   const noteClass = `btn-note${h.noteToday ? ' has-note' : ''}`
 
   return `
-    <div class="habit-card ${checked ? 'checked' : ''}${h.archived ? ' archived' : ''}" data-id="${h.id}">
+    <div class="habit-card ${checked ? 'checked' : ''}" data-id="${h.id}">
       <div class="habit-emoji">${h.emoji}</div>
       <div class="habit-info">
         <div class="habit-name-row">
@@ -299,7 +283,6 @@ function renderHabitCard(h) {
         <button class="${timerClass}" title="${h.timerRunning ? 'Stop timer' : 'Start timer'}">${timerIcon}</button>
         <button class="${noteClass}" title="${h.noteToday ? 'Edit note' : 'Add note'}">📝</button>
         <button class="btn-check ${checked ? 'done' : ''}" title="${checked ? 'Undo check-in' : 'Check in'}">${checked ? '✓' : '⬜'}</button>
-        <button class="btn-archive" title="${h.archived ? 'Unarchive' : 'Archive'}">${h.archived ? '📦' : '📁'}</button>
         <button class="btn-delete" title="Delete habit">✕</button>
       </div>
     </div>
@@ -328,7 +311,6 @@ function escHtml(str) {
 }
 
 // --- Actions ---
-let showArchived = false
 let pendingDelete = null
 
 async function toggleCheckin(id) {
@@ -497,29 +479,6 @@ async function performDelete(id) {
 
 function deleteHabit(id) { requestDelete(id) }
 
-// --- Archive ---
-function toggleArchive(id) {
-  const habit = habits.find(h => h.id === id)
-  if (!habit) return
-  const newArchived = !habit.archived
-  habit.archived = newArchived
-  render()
-  showToast(newArchived ? `📁 Archived "${habit.name}"` : `📦 Restored "${habit.name}"`)
-  api(`/habits/${id}/archive`, {
-    method: 'PUT',
-    body: JSON.stringify({ archived: newArchived })
-  }).catch(err => {
-    habit.archived = !newArchived
-    render()
-    showToast(err.message, 'error')
-  })
-}
-
-function toggleShowArchived() {
-  showArchived = !showArchived
-  render()
-}
-
 // --- Digest ---
 function openDigestModal() {
   digestModal.classList.remove('hidden')
@@ -631,7 +590,7 @@ function renderStats(d) {
     <div class="stat-card">
       <span class="stat-label">Total Habits</span>
       <span class="stat-value purple">${d.totalHabits}</span>
-      <span class="stat-sub">${d.activeHabits} active · ${d.archivedHabits} archived</span>
+      <span class="stat-sub">${d.totalHabits} total</span>
     </div>
     <div class="stat-card">
       <span class="stat-label">Total XP</span>
@@ -738,7 +697,9 @@ const themeDefs = [
   { id: 'default', label: 'Default', emoji: '🎨', swatches: ['#FF3366', '#00FF88', '#FFD700', '#9933FF'] },
   { id: 'ocean', label: 'Ocean', emoji: '🌊', swatches: ['#0066CC', '#00BBAA', '#66BBEE', '#2244AA'] },
   { id: 'sunset', label: 'Sunset', emoji: '🌅', swatches: ['#EE3344', '#FF8800', '#FFCC00', '#CC3377'] },
-  { id: 'forest', label: 'Forest', emoji: '🌲', swatches: ['#2D8B46', '#88CC44', '#DDB822', '#6633CC'] }
+  { id: 'forest', label: 'Forest', emoji: '🌲', swatches: ['#2D8B46', '#88CC44', '#DDB822', '#6633CC'] },
+  { id: 'dark', label: 'Dark', emoji: '🌙', swatches: ['#FF4466', '#00FF88', '#FFDD44', '#BB66FF'] },
+  { id: 'midnight', label: 'Midnight', emoji: '🌃', swatches: ['#8844FF', '#44DDBB', '#AAAAFF', '#AA66FF'] }
 ]
 
 function applyTheme(themeId) {
@@ -755,7 +716,7 @@ function openThemeModal() {
   const overlay = document.createElement('div')
   overlay.className = 'modal-overlay'
   overlay.innerHTML = `
-    <div class="modal-card" style="width:320px">
+    <div class="modal-card" style="width:360px">
       <div class="modal-header">
         <span class="modal-title">🎨 Theme</span>
         <button class="modal-close" id="themeModalClose">✕</button>
@@ -901,9 +862,6 @@ function init() {
   initKeyboard()
 
   addBtn.addEventListener('click', addHabit)
-
-  // Archive
-  archiveToggle.addEventListener('click', toggleShowArchived)
 
   // Digest modal
   digestBtn.addEventListener('click', openDigestModal)
