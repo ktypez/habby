@@ -9,7 +9,7 @@ let xpState = { level: 1, xp: 0, current: 0, needed: 100, progress: 0 }
 let timerIntervals = {}
 let noteTargetId = null
 let reminderInterval = null
-let accessPassword = sessionStorage.getItem('habby-password') || ''
+let accessPassword = localStorage.getItem('habby-password') || ''
 
 // DOM refs
 const $ = sel => document.querySelector(sel)
@@ -885,7 +885,7 @@ async function doLogin() {
       return
     }
     accessPassword = password
-    sessionStorage.setItem('habby-password', password)
+    localStorage.setItem('habby-password', password)
     loginScreen.classList.add('hidden')
     appEl.classList.remove('hidden')
     initApp()
@@ -894,6 +894,26 @@ async function doLogin() {
     loginBtn.disabled = false
     loginBtn.textContent = 'UNLOCK'
   }
+}
+
+// --- Logout ---
+function doLogout() {
+  accessPassword = ''
+  localStorage.removeItem('habby-password')
+  // Stop any running timers
+  Object.keys(timerIntervals).forEach(k => stopTimerInterval(k))
+  if (reminderInterval) { clearInterval(reminderInterval); reminderInterval = null }
+  // Reset state
+  habits = []
+  xpState = { level: 1, xp: 0, current: 0, needed: 100, progress: 0 }
+  // Show login, hide app
+  appEl.classList.add('hidden')
+  loginScreen.classList.remove('hidden')
+  loginInput.value = ''
+  loginError.classList.add('hidden')
+  loginBtn.disabled = false
+  loginBtn.textContent = 'UNLOCK'
+  loginInput.focus()
 }
 
 // --- Init ---
@@ -916,6 +936,10 @@ function initApp() {
   noteDeleteBtn.addEventListener('click', deleteNote)
   noteModalClose.addEventListener('click', closeNoteModal)
   noteModal.addEventListener('click', (e) => { if (e.target === noteModal) closeNoteModal() })
+
+  // Logout
+  const logoutBtn = document.getElementById('logoutBtn')
+  if (logoutBtn) logoutBtn.addEventListener('click', doLogout)
 
   // Theme picker
   const themeBtn = document.getElementById('themeBtn')
@@ -957,7 +981,7 @@ function init() {
         appEl.classList.remove('hidden')
         initApp()
       } else {
-        sessionStorage.removeItem('habby-password')
+        localStorage.removeItem('habby-password')
         accessPassword = ''
         loginInput.focus()
       }
