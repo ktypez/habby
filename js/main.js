@@ -13,7 +13,6 @@ let accessPassword = localStorage.getItem('habby-password') || ''
 
 // DOM refs
 const $ = sel => document.querySelector(sel)
-const $$ = sel => document.querySelectorAll(sel)
 
 const loginScreen = $('#loginScreen')
 const appEl = $('#app')
@@ -560,7 +559,7 @@ function renderDigest(d) {
 
     <div class="digest-section-title">
       ⏳ Pending
-      <span class="count-badge" style="background:var(--pink);color:var(--white)">${d.pendingCount}</span>
+      <span class="count-badge" style="background:var(--pink);color:var(--accent-text)">${d.pendingCount}</span>
     </div>
     ${d.pendingCount > 0 ? `<div class="digest-list">${pendingItems}</div>` : '<div class="digest-empty" style="border-color:var(--lime)">🎉 All done! Great work today!</div>'}
 

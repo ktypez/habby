@@ -564,8 +564,6 @@ input, textarea { font-family: inherit; }
    MODALS
    ============================================ */
 
-.hidden { display: none !important; }
-
 .modal-overlay {
   position: fixed; inset: 0;
   z-index: 1000;
@@ -575,7 +573,7 @@ input, textarea { font-family: inherit; }
   background: rgba(0,0,0,0.5);
   animation: fadeIn 0.2s ease;
 }
-.modal-overlay.hidden { display: none; }
+.hidden { display: none !important; }
 
 .modal-card {
   background: var(--white);
@@ -1126,7 +1124,7 @@ input, textarea { font-family: inherit; }
   .habit-name { font-size: 14px; }
   .habit-streak { font-size: 11px; }
   .habit-timer-display { font-size: 10px; }
-    .btn-check { font-size: 18px; }
+  .btn-check { font-size: 18px; }
   .btn-timer { font-size: 16px; }
   .btn-note { font-size: 16px; }
   .btn-delete { font-size: 13px; opacity: 0.6; }
