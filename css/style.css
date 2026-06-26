@@ -131,24 +131,16 @@ input, textarea { font-family: inherit; }
 .header-actions { display: flex; align-items: center; gap: 6px; }
 
 .btn-header-icon {
-  width: 36px; height: 36px;
-  display: grid; place-items: center;
-  font-size: 18px;
-  border: 3px solid var(--black);
-  background: var(--white);
-  transition: all 0.1s ease;
+  font-size: 20px;
+  background: none;
+  border: none;
+  padding: 4px;
   line-height: 1;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
 }
-
-.btn-header-icon:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 3px 3px 0 var(--shadow);
-}
-
-.btn-header-icon:active {
-  transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0 var(--shadow);
-}
+.btn-header-icon:hover { opacity: 1; }
+.btn-header-icon:active { opacity: 0.8; }
 
 .stat-badge {
   font-size: 14px;
@@ -444,56 +436,53 @@ html.dark .habit-card.checked { background: var(--dark-checked); }
 .habit-actions { display: flex; gap: 4px; flex-shrink: 0; }
 
 .btn-check {
-  width: 42px; height: 42px;
-  display: grid; place-items: center;
-  font-size: 19px;
-  border: 3px solid var(--black);
-  background: var(--off-white);
-  transition: all 0.1s ease;
+  font-size: 20px;
+  background: none;
+  border: none;
+  padding: 4px;
   line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
 }
-.btn-check:hover { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--shadow); }
-.btn-check:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
-.btn-check.done { background: var(--lime); box-shadow: 3px 3px 0 var(--shadow); }
+.btn-check:hover { opacity: 1; }
+.btn-check.done { opacity: 1; }
 
 .btn-timer {
-  width: 42px; height: 42px;
-  display: grid; place-items: center;
-  font-size: 17px;
-  border: 3px solid var(--black);
-  background: var(--off-white);
-  transition: all 0.1s ease;
+  font-size: 18px;
+  background: none;
+  border: none;
+  padding: 4px;
   line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
 }
-.btn-timer:hover { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--shadow); }
-.btn-timer:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
-.btn-timer.running { background: var(--pink); color: var(--white); box-shadow: 3px 3px 0 var(--shadow); }
+.btn-timer:hover { opacity: 1; }
+.btn-timer.running { opacity: 1; }
 
 .btn-note {
-  width: 42px; height: 42px;
-  display: grid; place-items: center;
-  font-size: 17px;
-  border: 3px solid var(--black);
-  background: var(--off-white);
-  transition: all 0.1s ease;
+  font-size: 18px;
+  background: none;
+  border: none;
+  padding: 4px;
   line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
 }
-.btn-note:hover { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--shadow); }
-.btn-note.has-note { background: var(--yellow); box-shadow: 3px 3px 0 var(--shadow); }
+.btn-note:hover { opacity: 1; }
+.btn-note.has-note { opacity: 1; }
 
 .btn-delete {
-  width: 34px; height: 34px;
-  display: grid; place-items: center;
-  font-size: 13px;
-  border: 3px solid var(--black);
-  background: var(--white);
-  color: var(--text-muted);
-  transition: all 0.1s ease;
+  font-size: 14px;
+  background: none;
+  border: none;
+  padding: 4px;
   line-height: 1;
   opacity: 0;
+  transition: opacity 0.15s ease;
+  color: var(--pink);
 }
-.habit-card:hover .btn-delete { opacity: 1; }
-.btn-delete:hover { background: var(--pink); color: var(--white); transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--shadow); }
+.habit-card:hover .btn-delete { opacity: 0.6; }
+.btn-delete:hover { opacity: 1; }
 
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -746,18 +735,16 @@ html.dark .habit-card.checked { background: var(--dark-checked); }
 }
 
 .btn-archive {
-  width: 34px; height: 34px;
-  display: grid; place-items: center;
-  font-size: 14px;
-  border: 3px solid var(--black);
-  background: var(--white);
-  color: var(--text-muted);
-  transition: all 0.1s ease;
+  font-size: 15px;
+  background: none;
+  border: none;
+  padding: 4px;
   line-height: 1;
   opacity: 0;
+  transition: opacity 0.15s ease;
 }
-.habit-card:hover .btn-archive { opacity: 1; }
-.btn-archive:hover { background: var(--cyan); color: var(--black); transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--shadow); }
+.habit-card:hover .btn-archive { opacity: 0.6; }
+.btn-archive:hover { opacity: 1; }
 
 /* ============================================
    DIGEST
@@ -1041,7 +1028,7 @@ html.dark .habit-card.checked { background: var(--dark-checked); }
   .xp-bar-track { height: 16px; }
   .xp-numbers { font-size: 10px; }
   .stat-badge { font-size: 12px; padding: 4px 10px; }
-  .btn-header-icon { width: 32px; height: 32px; font-size: 16px; }
+  .btn-header-icon { font-size: 18px; }
 
   .main { padding: 16px 12px 60px; }
   .add-habit-card { padding: 16px; }
@@ -1056,10 +1043,11 @@ html.dark .habit-card.checked { background: var(--dark-checked); }
   .habit-name { font-size: 14px; }
   .habit-streak { font-size: 11px; }
   .habit-timer-display { font-size: 10px; }
-    .btn-check { width: 38px; height: 38px; font-size: 17px; }
-  .btn-timer { width: 38px; height: 38px; font-size: 16px; }
-  .btn-note { width: 38px; height: 38px; font-size: 16px; }
-  .btn-delete { width: 30px; height: 30px; font-size: 12px; opacity: 1; }
+    .btn-check { font-size: 18px; }
+  .btn-timer { font-size: 16px; }
+  .btn-note { font-size: 16px; }
+  .btn-delete { font-size: 13px; opacity: 0.6; }
+  .btn-archive { font-size: 13px; opacity: 0.6; }
 
   .week-day { width: 28px; height: 28px; font-size: 8px; }
   .habit-day-label { width: 12px; height: 12px; font-size: 7px; }
