@@ -9,10 +9,17 @@ let xpState = { level: 1, xp: 0, current: 0, needed: 100, progress: 0 }
 let timerIntervals = {}
 let noteTargetId = null
 let reminderInterval = null
+let accessPassword = sessionStorage.getItem('habby-password') || ''
 
 // DOM refs
 const $ = sel => document.querySelector(sel)
 const $$ = sel => document.querySelectorAll(sel)
+
+const loginScreen = $('#loginScreen')
+const appEl = $('#app')
+const loginInput = $('#loginInput')
+const loginBtn = $('#loginBtn')
+const loginError = $('#loginError')
 
 const habitsList = $('#habitsList')
 const emptyState = $('#emptyState')
@@ -60,8 +67,10 @@ const notifModalClose = $('#notifModalClose')
 
 // --- API ---
 async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (accessPassword) headers['x-access-password'] = accessPassword
   const res = await fetch(`${API}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options
   })
   if (!res.ok) {
@@ -856,12 +865,41 @@ async function loadHabits() {
   render()
 }
 
+// --- Auth ---
+async function doLogin() {
+  const password = loginInput.value.trim()
+  if (!password) return
+  loginBtn.disabled = true
+  loginBtn.textContent = '...'
+  loginError.classList.add('hidden')
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    })
+    if (!res.ok) {
+      loginError.classList.remove('hidden')
+      loginBtn.disabled = false
+      loginBtn.textContent = 'UNLOCK'
+      return
+    }
+    accessPassword = password
+    sessionStorage.setItem('habby-password', password)
+    loginScreen.classList.add('hidden')
+    appEl.classList.remove('hidden')
+    initApp()
+  } catch (err) {
+    loginError.classList.remove('hidden')
+    loginBtn.disabled = false
+    loginBtn.textContent = 'UNLOCK'
+  }
+}
+
 // --- Init ---
-function init() {
+function initApp() {
   initEmojiPicker()
   initKeyboard()
-
-  addBtn.addEventListener('click', addHabit)
 
   // Digest modal
   digestBtn.addEventListener('click', openDigestModal)
@@ -900,6 +938,35 @@ function init() {
   applyTheme(currentTheme)
   loadNotifSettings()
   loadHabits()
+}
+
+function init() {
+  loginBtn.addEventListener('click', doLogin)
+  loginInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin() })
+  loginInput.focus()
+
+  if (accessPassword) {
+    // Try to auth with stored password
+    fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: accessPassword })
+    }).then(res => {
+      if (res.ok) {
+        loginScreen.classList.add('hidden')
+        appEl.classList.remove('hidden')
+        initApp()
+      } else {
+        sessionStorage.removeItem('habby-password')
+        accessPassword = ''
+        loginInput.focus()
+      }
+    }).catch(() => {
+      loginInput.focus()
+    })
+  } else {
+    loginInput.focus()
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init)

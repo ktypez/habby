@@ -12,7 +12,21 @@
     <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
-    <div id="app">
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="login-screen">
+      <div class="login-card">
+        <div class="login-emoji">🔐</div>
+        <div class="login-title">HABBY</div>
+        <div class="login-sub">Enter access password</div>
+        <div class="login-form">
+          <input type="password" id="loginInput" class="login-input" placeholder="password" autocomplete="off" />
+          <button id="loginBtn" class="login-btn">UNLOCK</button>
+        </div>
+        <div class="login-error hidden" id="loginError">Invalid password</div>
+      </div>
+    </div>
+
+    <div id="app" class="hidden">
       <!-- HEADER -->
       <header class="header">
         <div class="header-inner">

@@ -35,6 +35,7 @@
   --border-w: 4px;
   --shadow-x: 6px;
   --shadow-y: 6px;
+  --accent-text: var(--white);
 }
 
 /* ============================================
@@ -83,6 +84,7 @@ html[data-theme="dark"] {
   --card-bg: #1e1e1e;
   --text: var(--black);
   --shadow: #000000;
+  --accent-text: #ffffff;
   --pink: #FF4466;
   --lime: #00FF88;
   --cyan: #44DDFF;
@@ -91,6 +93,8 @@ html[data-theme="dark"] {
   --purple: #BB66FF;
 }
 html[data-theme="dark"] .habit-card.checked { background: #1a2e1a; }
+html[data-theme="dark"] .toast { background: #2a2a2a; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
+html[data-theme="dark"] .theme-opt.active { background: #c8c8c8; color: #1a1a1a; }
 
 /* Midnight — deep dark with cool purple/blue accents */
 html[data-theme="midnight"] {
@@ -104,6 +108,7 @@ html[data-theme="midnight"] {
   --card-bg: #141428;
   --text: var(--black);
   --shadow: #000022;
+  --accent-text: #e0d0ff;
   --pink: #8844FF;
   --lime: #44DDBB;
   --cyan: #66AAFF;
@@ -112,6 +117,8 @@ html[data-theme="midnight"] {
   --purple: #AA66FF;
 }
 html[data-theme="midnight"] .habit-card.checked { background: #1a1a3a; }
+html[data-theme="midnight"] .toast { background: #1c1c2a; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); }
+html[data-theme="midnight"] .theme-opt.active { background: #c0c0e0; color: #0c0c20; }
 
 html {
   font-family: var(--font-body);
@@ -181,7 +188,7 @@ input, textarea { font-family: inherit; }
   padding: 5px 12px;
   background: var(--pink);
   border: 3px solid var(--black);
-  color: var(--white);
+  color: var(--accent-text);
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -204,7 +211,7 @@ input, textarea { font-family: inherit; }
   padding: 3px 10px;
   background: var(--purple);
   border: 3px solid var(--black);
-  color: var(--white);
+  color: var(--accent-text);
   line-height: 1;
   white-space: nowrap;
   letter-spacing: 1px;
@@ -580,6 +587,8 @@ input, textarea { font-family: inherit; }
    MODALS
    ============================================ */
 
+.hidden { display: none !important; }
+
 .modal-overlay {
   position: fixed; inset: 0;
   z-index: 1000;
@@ -629,7 +638,7 @@ input, textarea { font-family: inherit; }
   transition: all 0.1s ease;
   line-height: 1;
 }
-.modal-close:hover { background: var(--pink); color: var(--white); transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--shadow); }
+.modal-close:hover { background: var(--pink); color: var(--accent-text); transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--shadow); }
 
 .note-input {
   width: 100%;
@@ -666,7 +675,7 @@ input, textarea { font-family: inherit; }
   line-height: 1;
 }
 .btn-modal.primary { background: var(--lime); color: var(--black); }
-.btn-modal.secondary { background: var(--pink); color: var(--white); }
+.btn-modal.secondary { background: var(--pink); color: var(--accent-text); }
 .btn-modal:hover { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--shadow); }
 .btn-modal:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
 
@@ -943,6 +952,95 @@ input, textarea { font-family: inherit; }
 }
 
 /* ============================================
+   LOGIN SCREEN
+   ============================================ */
+
+.login-screen {
+  position: fixed; inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--off-white);
+}
+.login-screen.hidden { display: none; }
+
+.login-card {
+  background: var(--white);
+  border: var(--border-w) solid var(--black);
+  box-shadow: var(--shadow-x) var(--shadow-y) 0 var(--shadow);
+  padding: 40px 36px;
+  text-align: center;
+  max-width: 320px;
+  width: calc(100vw - 32px);
+}
+
+.login-emoji { font-size: 48px; line-height: 1; margin-bottom: 12px; }
+.login-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--black);
+  margin-bottom: 4px;
+}
+.login-sub {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.login-input {
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: 700;
+  border: 3px solid var(--black);
+  background: var(--off-white);
+  color: var(--text);
+  outline: none;
+  text-align: center;
+  letter-spacing: 4px;
+  transition: all 0.1s ease;
+}
+.login-input::placeholder { letter-spacing: 1px; color: var(--gray-dark); font-weight: 400; }
+.login-input:focus { box-shadow: 3px 3px 0 var(--shadow); transform: translate(-1px, -1px); }
+
+.login-btn {
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 900;
+  font-family: var(--font-display);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: var(--black);
+  color: var(--accent-text);
+  border: 3px solid var(--black);
+  transition: all 0.1s ease;
+  line-height: 1;
+}
+.login-btn:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--shadow); }
+.login-btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
+.login-btn:disabled { opacity: 0.5; transform: none; box-shadow: none; }
+
+.login-error {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--pink);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.login-error.hidden { display: none; }
+
+/* ============================================
    THEME PICKER
    ============================================ */
 
@@ -971,7 +1069,7 @@ input, textarea { font-family: inherit; }
 }
 .theme-opt:hover { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 var(--shadow); }
 .theme-opt:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
-.theme-opt.active { background: var(--black); color: var(--white); }
+.theme-opt.active { background: var(--black); color: var(--accent-text); }
 
 .theme-swatches {
   display: flex;
@@ -1004,13 +1102,13 @@ input, textarea { font-family: inherit; }
   font-weight: 700;
   border: 3px solid var(--black);
   background: var(--black);
-  color: var(--white);
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+  color: var(--accent-text);
+  box-shadow: 4px 4px 0 var(--shadow);
   animation: toastIn 0.2s ease;
   pointer-events: auto;
 }
 .toast.success { background: var(--lime); color: var(--black); }
-.toast.error { background: var(--pink); color: var(--white); }
+.toast.error { background: var(--pink); color: var(--accent-text); }
 
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(10px); }

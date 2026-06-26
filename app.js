@@ -4,6 +4,7 @@ import { Redis } from 'ioredis'
 import { existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { createHash } from 'crypto'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
@@ -20,9 +21,64 @@ redis.on('error', (err) => {
   console.error('Redis connection error:', err.message)
 })
 
+function sha256(str) {
+  return createHash('sha256').update(str).digest('hex')
+}
+
+const DEFAULT_PASSWORD = 'mewmew'
+
+// Ensure default password is set in Redis
+async function initPassword() {
+  const exists = await redis.exists('app:password')
+  if (!exists) {
+    await redis.set('app:password', sha256(DEFAULT_PASSWORD))
+    console.log('🔐 Default password set in Redis')
+  }
+}
+initPassword()
+
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
+
+// --- Auth middleware ---
+app.use('/api', async (req, res, next) => {
+  // Skip auth check for the auth endpoint itself
+  if (req.path === '/auth') return next()
+
+  const sentPassword = req.headers['x-access-password']
+  if (!sentPassword) {
+    return res.status(401).json({ error: 'Access password required' })
+  }
+
+  try {
+    const storedHash = await redis.get('app:password')
+    const sentHash = sha256(sentPassword)
+    if (sentHash !== storedHash) {
+      return res.status(401).json({ error: 'Invalid password' })
+    }
+    next()
+  } catch (err) {
+    return res.status(500).json({ error: 'Auth check failed' })
+  }
+})
+
+// --- Auth endpoint ---
+app.post('/api/auth', async (req, res) => {
+  try {
+    const { password } = req.body
+    if (!password) return res.status(400).json({ error: 'Password required' })
+
+    const storedHash = await redis.get('app:password')
+    const sentHash = sha256(password)
+    if (sentHash !== storedHash) {
+      return res.status(401).json({ error: 'Invalid password' })
+    }
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: 'Auth failed' })
+  }
+})
 
 // --- Helpers ---
 function today() {
