@@ -529,7 +529,7 @@ function renderDigest(d) {
 
   return `
     <div class="digest-header">
-      <span style="font-family:var(--font-display);font-size:20px;font-weight:900">📋 Today</span>
+      <span style="font-size:20px;font-weight:700">📋 Today</span>
       <span class="digest-date">${escHtml(d.date)}</span>
     </div>
     <div class="digest-stats-row">
@@ -553,21 +553,21 @@ function renderDigest(d) {
 
     <div class="digest-section-title">
       ✅ Completed
-      <span class="count-badge" style="background:var(--lime)">${d.checkedCount}</span>
+      <span class="count-badge" style="background:var(--green)">${d.checkedCount}</span>
     </div>
     ${d.checkedCount > 0 ? `<div class="digest-list">${checkedItems}</div>` : '<div class="digest-empty">Nothing checked in yet today</div>'}
 
     <div class="digest-section-title">
       ⏳ Pending
-      <span class="count-badge" style="background:var(--pink);color:var(--accent-text)">${d.pendingCount}</span>
+      <span class="count-badge" style="background:var(--red);color:var(--bg-raise)">${d.pendingCount}</span>
     </div>
-    ${d.pendingCount > 0 ? `<div class="digest-list">${pendingItems}</div>` : '<div class="digest-empty" style="border-color:var(--lime)">🎉 All done! Great work today!</div>'}
+    ${d.pendingCount > 0 ? `<div class="digest-list">${pendingItems}</div>` : '<div class="digest-empty" style="border-color:var(--green)">🎉 All done! Great work today!</div>'}
 
     ${d.bestStreak > 0 ? `
-    <div style="margin-top:12px;padding:12px;background:var(--off-white);border:3px solid var(--black);text-align:center">
-      <span style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)">Best Streak</span>
-      <div style="font-family:var(--font-display);font-size:24px;font-weight:900;color:var(--orange);margin-top:2px">🔥 ${d.bestStreak}d</div>
-      <div style="font-size:13px;font-weight:700;color:var(--text-muted)">${escHtml(d.bestStreakName)}</div>
+    <div style="margin-top:12px;padding:12px;background:var(--bg);border:var(--border-w) solid var(--border);border-radius:var(--radius);text-align:center">
+      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Best Streak</span>
+      <div style="font-size:22px;font-weight:700;color:var(--orange);margin-top:2px">🔥 ${d.bestStreak}d</div>
+      <div style="font-size:13px;font-weight:700;color:var(--muted)">${escHtml(d.bestStreakName)}</div>
     </div>
     ` : ''}
   `
@@ -699,23 +699,16 @@ function initKeyboard() {
 }
 
 // --- Theme ---
-let currentTheme = localStorage.getItem('habby-theme') || 'default'
+let currentTheme = localStorage.getItem('habby-theme') || 'light'
 
 const themeDefs = [
-  { id: 'default', label: 'Default', emoji: '🎨', swatches: ['#FF3366', '#00FF88', '#FFD700', '#9933FF'] },
-  { id: 'ocean', label: 'Ocean', emoji: '🌊', swatches: ['#0066CC', '#00BBAA', '#66BBEE', '#2244AA'] },
-  { id: 'sunset', label: 'Sunset', emoji: '🌅', swatches: ['#EE3344', '#FF8800', '#FFCC00', '#CC3377'] },
-  { id: 'forest', label: 'Forest', emoji: '🌲', swatches: ['#2D8B46', '#88CC44', '#DDB822', '#6633CC'] },
-  { id: 'midnight', label: 'Midnight', emoji: '🌃', swatches: ['#8844FF', '#44DDBB', '#AAAAFF', '#AA66FF'] }
+  { id: 'light', label: 'Light', emoji: '☀️' },
+  { id: 'dark', label: 'Dark', emoji: '🌙' }
 ]
 
 function applyTheme(themeId) {
   currentTheme = themeId
-  if (themeId === 'default') {
-    document.documentElement.removeAttribute('data-theme')
-  } else {
-    document.documentElement.setAttribute('data-theme', themeId)
-  }
+  document.documentElement.setAttribute('data-theme', themeId)
   localStorage.setItem('habby-theme', themeId)
 }
 
@@ -723,7 +716,7 @@ function openThemeModal() {
   const overlay = document.createElement('div')
   overlay.className = 'modal-overlay'
   overlay.innerHTML = `
-    <div class="modal-card" style="width:360px">
+    <div class="modal-card" style="width:320px">
       <div class="modal-header">
         <span class="modal-title">🎨 Theme</span>
         <button class="modal-close" id="themeModalClose">✕</button>
@@ -733,9 +726,6 @@ function openThemeModal() {
           <button class="theme-opt ${currentTheme === t.id ? 'active' : ''}" data-theme-id="${t.id}">
             ${t.emoji}
             <span>${t.label}</span>
-            <div class="theme-swatches">
-              ${t.swatches.map(s => `<span class="theme-swatch" style="background:${s}"></span>`).join('')}
-            </div>
           </button>
         `).join('')}
       </div>

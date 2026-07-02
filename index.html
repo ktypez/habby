@@ -2,27 +2,32 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>HABBY — Habits & Streaks</title>
     <meta name="description" content="Track your habits, build streaks, level up." />
-    <meta name="theme-color" content="#ffffff" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700;900&family=Space+Grotesk:wght@700;900&display=swap" rel="stylesheet" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: dark)" />
+    <style>
+      @font-face{font-family:'JetBrains Mono';src:url('/fonts/JetBrainsMono-latin.woff2') format('woff2');font-weight:100 800;font-style:normal;font-display:swap;}
+    </style>
+    <script>
+      (function(){try{var t=localStorage.getItem('habby-theme');if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.setAttribute('data-theme','light');}catch(e){document.documentElement.setAttribute('data-theme','light');}})();
+    </script>
     <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
     <!-- LOGIN SCREEN -->
     <div id="loginScreen" class="login-screen">
-      <div class="login-card">
-        <div class="login-emoji">🔐</div>
-        <div class="login-title">HABBY</div>
-        <div class="login-sub">Enter access password</div>
-        <div class="login-form">
-          <input type="password" id="loginInput" class="login-input" placeholder="password" autocomplete="off" />
-          <button id="loginBtn" class="login-btn">UNLOCK</button>
+      <div class="password-gate">
+        <div class="terminal-line">
+          <span class="seg-user">habby</span>
+          <span class="seg-at">@</span>
+          <span class="seg-cmd">mcky</span>
+          <span class="seg-dollar">$</span>
+          <input type="password" id="loginInput" class="pw-input" placeholder="password" autocomplete="off" />
         </div>
-        <div class="login-error hidden" id="loginError">Invalid password</div>
+        <button id="loginBtn" class="pw-submit">enter</button>
+        <div class="login-error hidden" id="loginError">// wrong password</div>
       </div>
     </div>
 
@@ -55,7 +60,7 @@
         </div>
       </header>
 
-      <main class="main">
+      <main class="main" role="main">
         <!-- ADD HABIT FORM -->
         <section class="add-habit-section">
           <div class="add-habit-card">
