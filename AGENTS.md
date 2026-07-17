@@ -8,10 +8,12 @@
 - `~/OKF/skills/INDEX.md` — available skills
 
 ## Stack
-- Vite 6 + vanilla HTML/CSS/JS (frontend)
+- Vite 8 + vanilla HTML/CSS/JS (frontend)
 - Express 5 + ioredis/Upstash (backend)
-- SHA-256 access password auth
+- Dual storage: localStorage (guest) + Redis API (owner)
+- SHA-256 access password auth (owner mode)
 - XP/leveling gamification system
+- Triple-tap 🎯 logo for hidden owner login
 
 ## Rules
 - skip tests — do not run test commands
