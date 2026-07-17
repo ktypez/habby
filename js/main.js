@@ -1439,6 +1439,9 @@ function initApp() {
   initEmojiPicker()
   initKeyboard()
 
+  // Add habit button
+  addBtn.addEventListener('click', addHabit)
+
   // Digest modal
   digestBtn.addEventListener('click', openDigestModal)
   digestModalClose.addEventListener('click', closeDigestModal)
