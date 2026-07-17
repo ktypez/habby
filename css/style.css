@@ -1237,21 +1237,21 @@ button:active {
 
 /* ═══ DARK THEME ═══ */
 [data-theme="dark"] {
-  --bg: #0f0f1a;
-  --bg-raise: #1a1a2e;
-  --bg-sunken: #0a0a14;
-  --border: #e0e0e8;
-  --text: #e8e8ec;
-  --text-dim: #b8b8c0;
-  --muted: #6a6a78;
-  --shadow: 4px 4px 0 #e0e0e8;
-  --shadow-sm: 2px 2px 0 #e0e0e8;
-  --shadow-lg: 6px 6px 0 #e0e0e8;
+  --bg: #121212;
+  --bg-raise: #1e1e1e;
+  --bg-sunken: #0a0a0a;
+  --border: #d4d4d4;
+  --text: #ededed;
+  --text-dim: #a0a0a0;
+  --muted: #666666;
+  --shadow: 4px 4px 0 #d4d4d4;
+  --shadow-sm: 2px 2px 0 #d4d4d4;
+  --shadow-lg: 6px 6px 0 #d4d4d4;
 }
 
 [data-theme="dark"] .habit-card.checked {
-  background: color-mix(in srgb, var(--green) 6%, var(--bg-raise));
-  border-color: color-mix(in srgb, var(--green) 25%, var(--border));
+  background: color-mix(in srgb, var(--green) 8%, var(--bg-raise));
+  border-color: color-mix(in srgb, var(--green) 30%, var(--border));
 }
 
 [data-theme="dark"] .toast {
@@ -1259,33 +1259,33 @@ button:active {
   color: var(--text);
   box-shadow: var(--shadow);
 }
-[data-theme="dark"] .toast.success { background: var(--green); color: var(--text); }
-[data-theme="dark"] .toast.error { background: var(--red); color: var(--bg-raise); }
+[data-theme="dark"] .toast.success { background: var(--green); color: #121212; }
+[data-theme="dark"] .toast.error { background: var(--red); color: #121212; }
 
 [data-theme="dark"] .pw-submit {
   background: var(--bg-raise);
   color: var(--text);
   border-color: var(--border);
 }
-[data-theme="dark"] .pw-submit:hover { background: var(--amber); color: var(--text); }
+[data-theme="dark"] .pw-submit:hover { background: var(--amber); color: #121212; }
 
 [data-theme="dark"] .toggle-track { background: var(--muted); }
 [data-theme="dark"] .toggle-knob { background: var(--bg); border-color: var(--border); }
 
 [data-theme="dark"] .modal-overlay {
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.65);
 }
 
 [data-theme="dark"] .habit-day-label {
-  border-color: color-mix(in srgb, var(--muted) 30%, transparent);
+  border-color: #3a3a3a;
 }
 
 [data-theme="dark"] .week-day {
-  border-color: color-mix(in srgb, var(--muted) 30%, transparent);
+  border-color: #3a3a3a;
 }
 
 [data-theme="dark"] .digest-empty {
-  border-color: color-mix(in srgb, var(--muted) 30%, transparent);
+  border-color: #3a3a3a;
 }
 
 /* ═══ REDUCED MOTION ═══ */
