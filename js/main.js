@@ -1,6 +1,6 @@
 // ============================================
 // HABBY — Habits & Streaks Tracker
-// Categories, Notes, Notifications, XP, Timer
+// Public localStorage mode + Owner Redis mode
 // ============================================
 
 const API = '/api'
@@ -14,11 +14,7 @@ let accessPassword = localStorage.getItem('habby-password') || ''
 // DOM refs
 const $ = sel => document.querySelector(sel)
 
-const loginScreen = $('#loginScreen')
 const appEl = $('#app')
-const loginInput = $('#loginInput')
-const loginBtn = $('#loginBtn')
-const loginError = $('#loginError')
 
 const habitsList = $('#habitsList')
 const emptyState = $('#emptyState')
@@ -64,7 +60,459 @@ const notifTime = $('#notifTime')
 const notifTestBtn = $('#notifTestBtn')
 const notifModalClose = $('#notifModalClose')
 
-// --- API ---
+// ============================================
+// GUEST STORAGE (localStorage)
+// ============================================
+
+function guestGet(key) {
+  try {
+    const raw = localStorage.getItem('habby:' + key)
+    if (raw === null) return null
+    return JSON.parse(raw)
+  } catch { return null }
+}
+
+function guestSet(key, value) {
+  localStorage.setItem('habby:' + key, JSON.stringify(value))
+}
+
+function guestRemove(key) {
+  localStorage.removeItem('habby:' + key)
+}
+
+function guestGetHabits() {
+  return guestGet('habits') || []
+}
+
+function guestSaveHabits(list) {
+  guestSet('habits', list)
+}
+
+function guestGetHabitDates(id) {
+  return guestGet('habit:' + id + ':dates') || []
+}
+
+function guestSaveHabitDates(id, dates) {
+  guestSet('habit:' + id + ':dates', dates)
+}
+
+function guestGetNote(id, date) {
+  return guestGet('habit:' + id + ':note:' + date) || null
+}
+
+function guestSaveNote(id, date, text) {
+  if (text && text.trim()) {
+    guestSet('habit:' + id + ':note:' + date, text.trim())
+  } else {
+    guestRemove('habit:' + id + ':note:' + date)
+  }
+}
+
+function guestGetTimerTotal(id) {
+  return guestGet('habit:' + id + ':timer:total') || 0
+}
+
+function guestSaveTimerTotal(id, total) {
+  guestSet('habit:' + id + ':timer:total', total)
+}
+
+function guestGetTimerRunning(id) {
+  return guestGet('habit:' + id + ':timer:running') || null
+}
+
+function guestSaveTimerRunning(id, ts) {
+  if (ts) guestSet('habit:' + id + ':timer:running', ts)
+  else guestRemove('habit:' + id + ':timer:running')
+}
+
+function guestGetXp() {
+  return guestGet('xp') || 0
+}
+
+function guestSaveXp(xp) {
+  guestSet('xp', xp)
+}
+
+function guestGetNotifSettings() {
+  return {
+    enabled: guestGet('notif:enabled') || false,
+    time: guestGet('notif:time') || '09:00'
+  }
+}
+
+function guestSaveNotifSettings(enabled, time) {
+  guestSet('notif:enabled', enabled)
+  guestSet('notif:time', time)
+}
+
+// ============================================
+// STORAGE ADAPTER
+// ============================================
+
+const Storage = {
+  isOwner() { return !!accessPassword },
+
+  // --- Habits ---
+  async getHabits() {
+    if (this.isOwner()) {
+      return api('/habits')
+    }
+    const list = guestGetHabits()
+    const xp = calcXpProgress(guestGetXp())
+    const todayStr = today()
+    const habits = list.map(h => {
+      const dates = guestGetHabitDates(h.id)
+      const noteToday = guestGetNote(h.id, todayStr)
+      const timerRunning = guestGetTimerRunning(h.id)
+      const timerTotal = guestGetTimerTotal(h.id)
+      return {
+        ...h,
+        streak: calculateStreak(dates, todayStr),
+        checkedToday: dates.includes(todayStr),
+        dates: dates.sort().reverse().slice(0, 60),
+        timerRunning,
+        timerTotal,
+        noteToday
+      }
+    })
+    return { habits, xp }
+  },
+
+  async addHabit(name, emoji, color) {
+    if (this.isOwner()) {
+      return api('/habits', {
+        method: 'POST',
+        body: JSON.stringify({ name, emoji, color })
+      })
+    }
+    const id = randomId()
+    const now = new Date().toISOString()
+    const habit = {
+      id, name: name.trim(), emoji: emoji || '✅',
+      color: color || '#FF3366', archived: false, created_at: now
+    }
+    const list = guestGetHabits()
+    list.unshift(habit)
+    guestSaveHabits(list)
+    return {
+      id, name: name.trim(), emoji: emoji || '✅',
+      color: color || '#FF3366', archived: false, created_at: now,
+      streak: 0, checkedToday: false, dates: [],
+      timerRunning: null, timerTotal: 0, noteToday: null
+    }
+  },
+
+  async deleteHabit(id) {
+    if (this.isOwner()) {
+      return api(`/habits/${id}`, { method: 'DELETE' })
+    }
+    const list = guestGetHabits()
+    const habit = list.find(h => h.id === id)
+    if (!habit) return { success: true }
+
+    // XP deduction
+    const dates = guestGetHabitDates(id)
+    let xpDeduction = 0
+    let streakAccum = 0
+    for (const d of dates.sort()) {
+      streakAccum++
+      xpDeduction += calcXpForCheckin(streakAccum)
+    }
+    const totalXp = guestGetXp()
+    guestSaveXp(Math.max(0, totalXp - xpDeduction))
+
+    // Remove habit data
+    const newList = list.filter(h => h.id !== id)
+    guestSaveHabits(newList)
+    guestRemove('habit:' + id + ':dates')
+    guestRemove('habit:' + id + ':timer:running')
+    guestRemove('habit:' + id + ':timer:total')
+    // Remove notes
+    for (const d of dates) {
+      guestRemove('habit:' + id + ':note:' + d)
+    }
+    return { success: true }
+  },
+
+  async checkin(id) {
+    if (this.isOwner()) {
+      return api(`/habits/${id}/checkin`, { method: 'POST' })
+    }
+    const dateStr = today()
+    const dates = guestGetHabitDates(id)
+    if (!dates.includes(dateStr)) dates.push(dateStr)
+    guestSaveHabitDates(id, dates)
+
+    const streak = calculateStreak(dates, dateStr)
+    const xpGained = calcXpForCheckin(streak)
+    const totalXp = guestGetXp()
+    const newTotalXp = totalXp + xpGained
+    guestSaveXp(newTotalXp)
+
+    const noteToday = guestGetNote(id, dateStr)
+    return {
+      success: true, checkedToday: true, streak,
+      xpGained, xp: calcXpProgress(newTotalXp),
+      dates: dates.sort().reverse().slice(0, 60),
+      noteToday
+    }
+  },
+
+  async undoCheckin(id) {
+    if (this.isOwner()) {
+      return api(`/habits/${id}/checkin`, { method: 'DELETE' })
+    }
+    const dateStr = today()
+    let dates = guestGetHabitDates(id)
+    dates = dates.filter(d => d !== dateStr)
+    guestSaveHabitDates(id, dates)
+
+    const streak = calculateStreak(dates, dateStr)
+    const xpLost = calcXpForCheckin(streak + 1)
+    const totalXp = guestGetXp()
+    const newTotalXp = Math.max(0, totalXp - xpLost)
+    guestSaveXp(newTotalXp)
+
+    return {
+      success: true, checkedToday: false, streak,
+      xpLost, xp: calcXpProgress(newTotalXp),
+      dates: dates.sort().reverse().slice(0, 60)
+    }
+  },
+
+  // --- Notes ---
+  async saveNote(id, text) {
+    if (this.isOwner()) {
+      return api(`/habits/${id}/note`, {
+        method: 'PUT',
+        body: JSON.stringify({ text })
+      })
+    }
+    const dateStr = today()
+    guestSaveNote(id, dateStr, text)
+    return { success: true, note: text?.trim() || null }
+  },
+
+  // --- Timer ---
+  async startTimer(id) {
+    if (this.isOwner()) {
+      return api(`/habits/${id}/timer/start`, { method: 'POST' })
+    }
+    const now = Date.now()
+    guestSaveTimerRunning(id, now)
+    return { success: true, startTime: now }
+  },
+
+  async stopTimer(id) {
+    if (this.isOwner()) {
+      return api(`/habits/${id}/timer/stop`, { method: 'POST' })
+    }
+    const startTime = guestGetTimerRunning(id)
+    if (!startTime) return { error: 'Timer not running' }
+    const now = Date.now()
+    const elapsed = Math.floor((now - startTime) / 1000)
+    const total = guestGetTimerTotal(id)
+    const newTotal = total + elapsed
+    guestSaveTimerTotal(id, newTotal)
+    guestSaveTimerRunning(id, null)
+    return { success: true, elapsed, total: newTotal, startTime: null }
+  },
+
+  // --- Stats ---
+  async getStats() {
+    if (this.isOwner()) {
+      return api('/stats')
+    }
+    // Build stats from localStorage
+    const list = guestGetHabits()
+    const totalXP = guestGetXp()
+    const now = new Date()
+    const todayStr = now.toISOString().slice(0, 10)
+
+    let bestStreak = 0
+    let bestStreakName = ''
+    let weekCheckins = 0
+    let weekTotalDays = 0
+    const weekAgo = new Date(now)
+    weekAgo.setDate(weekAgo.getDate() - 6)
+    const weekDates = []
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekAgo)
+      d.setDate(d.getDate() + i)
+      weekDates.push(d.toISOString().slice(0, 10))
+    }
+    const weekDailyCounts = weekDates.map(() => 0)
+
+    const active = list.filter(h => !h.archived)
+    const archived = list.filter(h => h.archived)
+
+    for (const h of active) {
+      const dates = guestGetHabitDates(h.id)
+      const streak = calculateStreak(dates, todayStr)
+      if (streak > bestStreak) {
+        bestStreak = streak
+        bestStreakName = h.name
+      }
+      for (const d of dates) {
+        const idx = weekDates.indexOf(d)
+        if (idx !== -1) weekDailyCounts[idx]++
+      }
+      weekCheckins += dates.filter(d => d >= weekDates[0] && d <= todayStr).length
+      const created = new Date(h.created_at || now)
+      const daysSince = Math.max(1, Math.round((now - created) / (1000 * 60 * 60 * 24)))
+      weekTotalDays += Math.min(7, daysSince)
+    }
+
+    const completionRate = weekTotalDays > 0 ? Math.round((weekCheckins / weekTotalDays) * 100) : 0
+    const weekXp = weekCheckins * 15
+
+    return {
+      totalHabits: list.length,
+      activeHabits: active.length,
+      archivedHabits: archived.length,
+      totalXP,
+      bestStreak,
+      bestStreakName,
+      weekCheckins,
+      weekTotalDays,
+      completionRate,
+      weekXp,
+      weekDailyCounts,
+      weekDates
+    }
+  },
+
+  // --- Digest ---
+  async getDigest() {
+    if (this.isOwner()) {
+      return api('/digest')
+    }
+    const list = guestGetHabits()
+    const totalXP = guestGetXp()
+    const now = new Date()
+    const todayStr = now.toISOString().slice(0, 10)
+
+    const active = list.filter(h => !h.archived).map(h => {
+      const dates = guestGetHabitDates(h.id)
+      const noteToday = guestGetNote(h.id, todayStr)
+      return {
+        ...h,
+        streak: calculateStreak(dates, todayStr),
+        checkedToday: dates.includes(todayStr),
+        noteToday
+      }
+    })
+    const checked = active.filter(h => h.checkedToday)
+    const pending = active.filter(h => !h.checkedToday)
+
+    let xpToday = 0
+    for (const h of checked) {
+      xpToday += calcXpForCheckin(h.streak)
+    }
+
+    let bestStreak = 0
+    let bestStreakName = ''
+    for (const h of active) {
+      if (h.streak > bestStreak) {
+        bestStreak = h.streak
+        bestStreakName = h.name
+      }
+    }
+    const totalStreaks = active.reduce((s, h) => s + h.streak, 0)
+
+    const dateStr = now.toLocaleDateString('en', {
+      weekday: 'long', month: 'long', day: 'numeric'
+    })
+
+    return {
+      date: dateStr,
+      totalHabits: active.length,
+      checkedCount: checked.length,
+      pendingCount: pending.length,
+      totalXP,
+      xpToday,
+      bestStreak,
+      bestStreakName,
+      totalStreaks,
+      checked: checked.map(h => ({
+        id: h.id, name: h.name, emoji: h.emoji,
+        streak: h.streak, color: h.color, note: h.noteToday
+      })),
+      pending: pending.map(h => ({
+        id: h.id, name: h.name, emoji: h.emoji,
+        streak: h.streak, color: h.color
+      }))
+    }
+  },
+
+  // --- Notifications ---
+  async getNotifSettings() {
+    if (this.isOwner()) {
+      return api('/notifications/settings')
+    }
+    return guestGetNotifSettings()
+  },
+
+  async saveNotifSettings(enabled, time) {
+    if (this.isOwner()) {
+      return api('/notifications/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ enabled, time })
+      })
+    }
+    guestSaveNotifSettings(enabled, time)
+  }
+}
+
+// ============================================
+// CORE HELPERS
+// ============================================
+
+function today() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function randomId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+}
+
+function calculateStreak(dates, todayDate) {
+  if (!dates || dates.length === 0) return 0
+  const dateSet = new Set(dates)
+  let streak = 0
+  let checkDate = new Date(todayDate + 'T00:00:00')
+  if (!dateSet.has(todayDate)) checkDate.setDate(checkDate.getDate() - 1)
+  while (true) {
+    const ds = checkDate.toISOString().slice(0, 10)
+    if (dateSet.has(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1) }
+    else break
+  }
+  return streak
+}
+
+function calcXpForCheckin(streak) {
+  return 10 + Math.min(streak, 30)
+}
+
+function calcLevel(totalXP) {
+  return Math.floor(totalXP / 100) + 1
+}
+
+function calcXpForLevel(level) {
+  return (level - 1) * 100
+}
+
+function calcXpProgress(totalXP) {
+  const level = calcLevel(totalXP)
+  const current = totalXP - calcXpForLevel(level)
+  const needed = 100
+  return { level, xp: totalXP, current, needed, progress: current / needed }
+}
+
+// ============================================
+// API (owner only)
+// ============================================
+
 async function api(path, options = {}) {
   const headers = { 'Content-Type': 'application/json' }
   if (accessPassword) headers['x-access-password'] = accessPassword
@@ -79,7 +527,10 @@ async function api(path, options = {}) {
   return res.json()
 }
 
-// --- Toast ---
+// ============================================
+// TOAST
+// ============================================
+
 function showToast(message, type = 'success') {
   const toast = document.createElement('div')
   toast.className = `toast ${type}`
@@ -92,7 +543,10 @@ function showToast(message, type = 'success') {
   }, 2000)
 }
 
-// --- XP ---
+// ============================================
+// XP
+// ============================================
+
 function showXpFloat(xp, x, y) {
   const el = document.createElement('div')
   el.className = 'xp-float'
@@ -128,12 +582,15 @@ function renderXp(xpData) {
   xpNumbers.textContent = `${xpData.current} / ${xpData.needed} XP`
 }
 
-// --- Week helpers ---
+// ============================================
+// WEEK HELPERS
+// ============================================
+
 function getWeekDays() {
   const days = []
-  const today = new Date()
+  const now = new Date()
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(today)
+    const d = new Date(now)
     d.setDate(d.getDate() - i)
     days.push({
       date: d.toISOString().slice(0, 10),
@@ -144,23 +601,10 @@ function getWeekDays() {
   return days
 }
 
-function calcStreak(dates) {
-  if (!dates || dates.length === 0) return 0
-  const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
-  const dateSet = new Set(dates)
-  let streak = 0
-  let checkDate = new Date(today)
-  if (!dateSet.has(todayStr)) checkDate.setDate(checkDate.getDate() - 1)
-  while (true) {
-    const ds = checkDate.toISOString().slice(0, 10)
-    if (dateSet.has(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1) }
-    else break
-  }
-  return streak
-}
+// ============================================
+// TIMER HELPERS
+// ============================================
 
-// --- Timer helpers ---
 function formatDuration(seconds) {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
@@ -197,7 +641,10 @@ function stopTimerInterval(id) {
   if (timerIntervals[id]) { clearInterval(timerIntervals[id]); delete timerIntervals[id] }
 }
 
-// --- Render ---
+// ============================================
+// RENDER
+// ============================================
+
 function getFilteredHabits() {
   return [...habits].sort((a, b) => {
     if (a.checkedToday !== b.checkedToday) return a.checkedToday ? 1 : -1
@@ -211,7 +658,9 @@ function render(animatingId) {
   if (sorted.length === 0) {
     habitsList.innerHTML = ''
     emptyState.classList.remove('hidden')
-    emptyText.textContent = 'Add your first habit above and start your streak!'
+    emptyText.textContent = Storage.isOwner()
+      ? 'Add your first habit above and start your streak!'
+      : 'Add your first habit — data saves to this device.'
     weekSection.style.display = 'none'
   } else {
     emptyState.classList.add('hidden')
@@ -256,7 +705,6 @@ function renderHabitCard(h) {
 
   const streakEmoji = h.streak >= 30 ? '💎' : h.streak >= 7 ? '🔥' : h.streak >= 1 ? '🔥' : '·'
 
-  // Timer display
   let timerDisplay = ''
   let timerClass = 'btn-timer'
   let timerIcon = '⏱️'
@@ -270,7 +718,6 @@ function renderHabitCard(h) {
     timerDisplay = `<span class="habit-timer-display">⏱️ ${formatDuration(h.timerTotal)}</span>`
   }
 
-  // Note button
   const noteClass = `btn-note${h.noteToday ? ' has-note' : ''}`
 
   return `
@@ -318,7 +765,10 @@ function escHtml(str) {
   return div.innerHTML
 }
 
-// --- Actions ---
+// ============================================
+// ACTIONS
+// ============================================
+
 let pendingDelete = null
 
 async function toggleCheckin(id) {
@@ -326,25 +776,26 @@ async function toggleCheckin(id) {
   if (!habit) return
   const wasChecked = habit.checkedToday
 
+  // Optimistic update
   habit.checkedToday = !wasChecked
   if (!wasChecked) {
     habit.dates = [...(habit.dates || []), new Date().toISOString().slice(0, 10)]
   } else {
     habit.dates = (habit.dates || []).filter(d => d !== new Date().toISOString().slice(0, 10))
   }
-  habit.streak = calcStreak(habit.dates)
+  habit.streak = calculateStreak(habit.dates, today())
   render(id)
 
   try {
     if (wasChecked) {
-      const data = await api(`/habits/${id}/checkin`, { method: 'DELETE' })
+      const data = await Storage.undoCheckin(id)
       habit.streak = calcStreak(data.dates)
       habit.dates = data.dates || habit.dates
       if (data.xp) renderXp(data.xp)
       render()
       showToast('Check-in undone')
     } else {
-      const data = await api(`/habits/${id}/checkin`, { method: 'POST' })
+      const data = await Storage.checkin(id)
       habit.streak = calcStreak(data.dates)
       habit.dates = data.dates || habit.dates
       habit.noteToday = data.noteToday || null
@@ -373,7 +824,7 @@ async function toggleCheckin(id) {
     } else {
       habit.dates = (habit.dates || []).filter(d => d !== new Date().toISOString().slice(0, 10))
     }
-    habit.streak = calcStreak(habit.dates)
+    habit.streak = calculateStreak(habit.dates, today())
     render()
     showToast(err.message, 'error')
   }
@@ -389,7 +840,7 @@ async function toggleTimer(id) {
     render()
     stopTimerInterval(id)
     try {
-      const data = await api(`/habits/${id}/timer/stop`, { method: 'POST' })
+      const data = await Storage.stopTimer(id)
       habit.timerTotal = data.total
       render()
       showToast(`⏱️ Session: ${formatDuration(data.elapsed || 0)}`)
@@ -399,7 +850,7 @@ async function toggleTimer(id) {
     render()
     startTimerInterval(id)
     try {
-      const data = await api(`/habits/${id}/timer/start`, { method: 'POST' })
+      const data = await Storage.startTimer(id)
       habit.timerRunning = data.startTime
       stopTimerInterval(id)
       startTimerInterval(id)
@@ -430,10 +881,7 @@ async function saveNote() {
   if (!noteTargetId) return
   const text = noteInput.value.trim()
   try {
-    await api(`/habits/${noteTargetId}/note`, {
-      method: 'PUT',
-      body: JSON.stringify({ text })
-    })
+    await Storage.saveNote(noteTargetId, text)
     const habit = habits.find(h => h.id === noteTargetId)
     if (habit) {
       habit.noteToday = text || null
@@ -481,7 +929,7 @@ async function performDelete(id) {
   const idx = habits.indexOf(habit)
   habits.splice(idx, 1); render()
   showToast(`Deleted "${habit.name}"`)
-  try { await api(`/habits/${id}`, { method: 'DELETE' }) }
+  try { await Storage.deleteHabit(id) }
   catch (err) { habits.splice(idx, 0, habit); render(); showToast(err.message, 'error') }
 }
 
@@ -500,7 +948,7 @@ function closeDigestModal() {
 
 async function loadDigest() {
   try {
-    const d = await api('/digest')
+    const d = await Storage.getDigest()
     digestContent.innerHTML = renderDigest(d)
   } catch (err) {
     digestContent.innerHTML = `<div class="digest-empty">Failed to load digest</div>`
@@ -586,7 +1034,7 @@ function closeStatsModal() {
 
 async function loadStats() {
   try {
-    const data = await api('/stats')
+    const data = await Storage.getStats()
     statsGrid.innerHTML = renderStats(data)
   } catch (err) {
     statsGrid.innerHTML = `<div class="stat-card span-2" style="grid-column:span 2;text-align:center;padding:20px"><span class="stat-label">Error loading stats</span></div>`
@@ -653,10 +1101,7 @@ async function addHabit() {
   showToast(`Added "${name}"`)
 
   try {
-    const data = await api('/habits', {
-        method: 'POST',
-        body: JSON.stringify({ name, emoji, color })
-      })
+    const data = await Storage.addHabit(name, emoji, color)
     const idx = habits.findIndex(h => h.id === tempId)
     if (idx !== -1) {
       habits[idx] = { ...data, dates: [], timerRunning: null, timerTotal: 0, noteToday: null }
@@ -694,6 +1139,9 @@ function initKeyboard() {
       if (!statsModal.classList.contains('hidden')) closeStatsModal()
       if (!noteModal.classList.contains('hidden')) closeNoteModal()
       if (!notifModal.classList.contains('hidden')) closeNotifModal()
+      // Close owner login modal on Escape
+      const loginOverlay = document.getElementById('ownerLoginOverlay')
+      if (loginOverlay) loginOverlay.remove()
     }
   })
 }
@@ -744,13 +1192,16 @@ function openThemeModal() {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
 }
 
-// --- Notifications ---
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
 let notifEnabled = false
 let notifReminderTime = '09:00'
 
 async function loadNotifSettings() {
   try {
-    const data = await api('/notifications/settings')
+    const data = await Storage.getNotifSettings()
     notifEnabled = data.enabled
     notifReminderTime = data.time || '09:00'
     notifTime.value = notifReminderTime
@@ -761,10 +1212,7 @@ async function loadNotifSettings() {
 
 async function saveNotifSettings() {
   try {
-    await api('/notifications/settings', {
-      method: 'PUT',
-      body: JSON.stringify({ enabled: notifEnabled, time: notifReminderTime })
-    })
+    await Storage.saveNotifSettings(notifEnabled, notifReminderTime)
     if (notifEnabled) startReminderCheck()
     else stopReminderCheck()
   } catch (e) { /* ignore */ }
@@ -777,13 +1225,12 @@ function startReminderCheck() {
     const now = new Date()
     const current = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     if (current === notifReminderTime) {
-      // Only notify if there are unchecked habits
       const unchecked = habits.filter(h => !h.checkedToday)
       if (unchecked.length > 0) {
         showBrowserNotification('⏰ Habby Reminder', `${unchecked.length} habit${unchecked.length > 1 ? 's' : ''} to check in today!`)
       }
     }
-  }, 30000) // Check every 30 seconds
+  }, 30000)
 }
 
 function stopReminderCheck() {
@@ -817,7 +1264,10 @@ function toggleNotif() {
   saveNotifSettings()
 }
 
-// --- Service Worker ---
+// ============================================
+// SERVICE WORKER
+// ============================================
+
 async function registerSw() {
   if ('serviceWorker' in navigator) {
     try {
@@ -829,15 +1279,18 @@ async function registerSw() {
   }
 }
 
-// --- Load ---
+// ============================================
+// LOAD HABITS
+// ============================================
+
 async function loadHabits() {
   habitsList.innerHTML = '<div class="loading-state">LOADING...</div>'
 
   try {
-    const data = await api('/habits')
+    const data = await Storage.getHabits()
     habits = (data.habits || []).map(h => ({
       ...h,
-      streak: h.streak || calcStreak(h.dates || []),
+      streak: h.streak || calculateStreak(h.dates || [], today()),
       timerRunning: h.timerRunning || null,
       timerTotal: h.timerTotal || 0,
       noteToday: h.noteToday || null
@@ -853,58 +1306,135 @@ async function loadHabits() {
   render()
 }
 
-// --- Auth ---
-async function doLogin() {
-  const password = loginInput.value.trim()
-  if (!password) return
-  loginBtn.disabled = true
-  loginBtn.textContent = '...'
-  loginError.classList.add('hidden')
-  try {
-    const res = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password })
-    })
-    if (!res.ok) {
-      loginError.classList.remove('hidden')
-      loginBtn.disabled = false
-      loginBtn.textContent = 'UNLOCK'
-      return
+// ============================================
+// OWNER LOGIN (hidden shortcut)
+// ============================================
+
+let logoTapCount = 0
+let logoTapTimer = null
+
+function setupLogoShortcut() {
+  const logo = document.querySelector('.header-logo')
+  if (!logo) return
+
+  logo.addEventListener('click', () => {
+    logoTapCount++
+    clearTimeout(logoTapTimer)
+    logoTapTimer = setTimeout(() => { logoTapCount = 0 }, 1200)
+
+    if (logoTapCount >= 3) {
+      logoTapCount = 0
+      clearTimeout(logoTapTimer)
+      openOwnerLoginModal()
     }
-    accessPassword = password
-    localStorage.setItem('habby-password', password)
-    loginScreen.classList.add('hidden')
-    appEl.classList.remove('hidden')
-    initApp()
-  } catch (err) {
-    loginError.classList.remove('hidden')
-    loginBtn.disabled = false
-    loginBtn.textContent = 'UNLOCK'
-  }
+  })
 }
 
-// --- Logout ---
+function openOwnerLoginModal() {
+  // Don't open if already logged in
+  if (Storage.isOwner()) return
+
+  // Remove existing overlay if any
+  const existing = document.getElementById('ownerLoginOverlay')
+  if (existing) existing.remove()
+
+  const overlay = document.createElement('div')
+  overlay.id = 'ownerLoginOverlay'
+  overlay.className = 'modal-overlay'
+  overlay.innerHTML = `
+    <div class="modal-card" style="width:360px">
+      <div class="modal-header">
+        <span class="modal-title">🔐 Owner Access</span>
+        <button class="modal-close" id="ownerLoginClose">✕</button>
+      </div>
+      <div class="terminal-line" style="justify-content:flex-start;padding:0;margin-bottom:12px">
+        <span class="seg-user">habby</span>
+        <span class="seg-at">@</span>
+        <span class="seg-cmd">mcky</span>
+        <span class="seg-dollar">$</span>
+        <input type="password" id="ownerLoginInput" class="pw-input" placeholder="password" autocomplete="off" />
+      </div>
+      <button id="ownerLoginBtn" class="btn-modal primary" style="width:100%">UNLOCK</button>
+      <div class="login-error hidden" id="ownerLoginError">// wrong password</div>
+    </div>
+  `
+  document.body.appendChild(overlay)
+
+  const ownerInput = document.getElementById('ownerLoginInput')
+  const ownerBtn = document.getElementById('ownerLoginBtn')
+  const ownerError = document.getElementById('ownerLoginError')
+
+  ownerInput.focus()
+  ownerInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') ownerBtn.click()
+  })
+
+  ownerBtn.addEventListener('click', async () => {
+    const password = ownerInput.value.trim()
+    if (!password) return
+    ownerBtn.disabled = true
+    ownerBtn.textContent = '...'
+    ownerError.classList.add('hidden')
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      })
+      if (!res.ok) {
+        ownerError.classList.remove('hidden')
+        ownerBtn.disabled = false
+        ownerBtn.textContent = 'UNLOCK'
+        return
+      }
+      // Login success — discard guest data, switch to owner mode
+      clearGuestData()
+      accessPassword = password
+      localStorage.setItem('habby-password', password)
+      overlay.remove()
+      showToast('🔓 Owner mode — loading server data')
+      loadHabits()
+      loadNotifSettings()
+    } catch (err) {
+      ownerError.classList.remove('hidden')
+      ownerBtn.disabled = false
+      ownerBtn.textContent = 'UNLOCK'
+    }
+  })
+
+  document.getElementById('ownerLoginClose').addEventListener('click', () => overlay.remove())
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
+}
+
+function clearGuestData() {
+  const keys = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (k && k.startsWith('habby:')) keys.push(k)
+  }
+  keys.forEach(k => localStorage.removeItem(k))
+}
+
+// ============================================
+// LOGOUT
+// ============================================
+
 function doLogout() {
   accessPassword = ''
   localStorage.removeItem('habby-password')
-  // Stop any running timers
   Object.keys(timerIntervals).forEach(k => stopTimerInterval(k))
   if (reminderInterval) { clearInterval(reminderInterval); reminderInterval = null }
-  // Reset state
   habits = []
   xpState = { level: 1, xp: 0, current: 0, needed: 100, progress: 0 }
-  // Show login, hide app
-  appEl.classList.add('hidden')
-  loginScreen.classList.remove('hidden')
-  loginInput.value = ''
-  loginError.classList.add('hidden')
-  loginBtn.disabled = false
-  loginBtn.textContent = 'UNLOCK'
-  loginInput.focus()
+  showToast('🔒 Back to local mode')
+  loadHabits()
+  loadNotifSettings()
 }
 
-// --- Init ---
+// ============================================
+// INIT
+// ============================================
+
 function initApp() {
   initEmojiPicker()
   initKeyboard()
@@ -946,6 +1476,9 @@ function initApp() {
     showBrowserNotification('🔔 Habby', 'This is a test notification!')
   })
 
+  // Logo triple-tap for owner login
+  setupLogoShortcut()
+
   registerSw()
   applyTheme(currentTheme)
   loadNotifSettings()
@@ -953,32 +1486,9 @@ function initApp() {
 }
 
 function init() {
-  loginBtn.addEventListener('click', doLogin)
-  loginInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin() })
-  loginInput.focus()
-
-  if (accessPassword) {
-    // Try to auth with stored password
-    fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: accessPassword })
-    }).then(res => {
-      if (res.ok) {
-        loginScreen.classList.add('hidden')
-        appEl.classList.remove('hidden')
-        initApp()
-      } else {
-        localStorage.removeItem('habby-password')
-        accessPassword = ''
-        loginInput.focus()
-      }
-    }).catch(() => {
-      loginInput.focus()
-    })
-  } else {
-    loginInput.focus()
-  }
+  // Always go straight to the app — no login gate
+  appEl.classList.remove('hidden')
+  initApp()
 }
 
 document.addEventListener('DOMContentLoaded', init)

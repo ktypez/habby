@@ -16,22 +16,8 @@
     <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
-    <!-- LOGIN SCREEN -->
-    <div id="loginScreen" class="login-screen">
-      <div class="password-gate">
-        <div class="terminal-line">
-          <span class="seg-user">habby</span>
-          <span class="seg-at">@</span>
-          <span class="seg-cmd">mcky</span>
-          <span class="seg-dollar">$</span>
-          <input type="password" id="loginInput" class="pw-input" placeholder="password" autocomplete="off" />
-        </div>
-        <button id="loginBtn" class="pw-submit">enter</button>
-        <div class="login-error hidden" id="loginError">// wrong password</div>
-      </div>
-    </div>
-
-    <div id="app" class="hidden">
+    <!-- APP (always visible — no login gate) -->
+    <div id="app">
       <!-- HEADER -->
       <header class="header">
         <div class="header-inner">
