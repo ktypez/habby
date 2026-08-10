@@ -560,15 +560,30 @@ function showXpFloat(xp, x, y) {
 function showLevelUp(level) {
   const overlay = document.createElement('div')
   overlay.className = 'level-up-overlay'
-  const emojis = ['🎉', '🏆', '💎', '👑', '🚀', '⭐', '🌟', '🔥']
+  const emojis = ['🏆', '🏆', '💎', '👑', '🔥', '⭐', '🌟', '🚀']
   overlay.innerHTML = `
     <div class="level-up-card">
+      <div class="level-up-sparkles"></div>
       <div class="level-up-emoji">${emojis[Math.min(level - 1, emojis.length - 1)]}</div>
       <div class="level-up-title">LEVEL UP!</div>
       <div class="level-up-sub">You reached <strong>Level ${level}</strong></div>
       <button class="level-up-btn">LET'S GO!</button>
     </div>
   `
+  const sparkles = ['✨', '⭐', '💫', '✨', '⭐', '💫']
+  const wrap = overlay.querySelector('.level-up-sparkles')
+  sparkles.forEach((s, i) => {
+    const span = document.createElement('span')
+    span.className = 'level-up-sparkle'
+    span.textContent = s
+    const angle = (i / sparkles.length) * Math.PI * 2
+    span.style.left = `${-30 + i * 12}px`
+    span.style.top = '0px'
+    span.style.setProperty('--tx', `${Math.round(Math.cos(angle) * 78)}px`)
+    span.style.setProperty('--ty', `${Math.round(Math.sin(angle) * 78)}px`)
+    span.style.animationDelay = `${i * 0.06}s`
+    wrap.appendChild(span)
+  })
   overlay.querySelector('.level-up-btn').addEventListener('click', () => overlay.remove())
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
   document.body.appendChild(overlay)
@@ -737,7 +752,7 @@ function renderHabitCard(h) {
       <div class="habit-actions">
         <button class="${timerClass}" title="${h.timerRunning ? 'Stop timer' : 'Start timer'}">${timerIcon}</button>
         <button class="${noteClass}" title="${h.noteToday ? 'Edit note' : 'Add note'}">📝</button>
-        <button class="btn-check ${checked ? 'done' : ''}" title="${checked ? 'Undo check-in' : 'Check in'}">${checked ? '✓' : '⬜'}</button>
+        <button class="btn-check ${checked ? 'done' : ''}" title="${checked ? 'Undo check-in' : 'Check in'}">${checked ? '✓' : ''}</button>
         <button class="btn-delete" title="Delete habit">✕</button>
       </div>
     </div>
@@ -938,7 +953,7 @@ function deleteHabit(id) { requestDelete(id) }
 // --- Digest ---
 function openDigestModal() {
   digestModal.classList.remove('hidden')
-  digestContent.innerHTML = '<div class="loading-state">LOADING...</div>'
+  digestContent.innerHTML = '<div class="skel skel-line"></div><div class="skel skel-line short"></div><div class="skel skel-line tiny"></div>'
   loadDigest()
 }
 
@@ -973,7 +988,7 @@ function renderDigest(d) {
     </div>
   `).join('')
 
-  const streakColor = d.totalStreaks >= 30 ? 'green' : d.totalStreaks >= 10 ? 'orange' : 'pink'
+  const streakColor = d.totalStreaks >= 30 ? 'green' : d.totalStreaks >= 10 ? 'yellow' : ''
 
   return `
     <div class="digest-header">
@@ -990,7 +1005,7 @@ function renderDigest(d) {
         <div class="digest-stat-label">Pending</div>
       </div>
       <div class="digest-stat">
-        <div class="digest-stat-value purple">+${d.xpToday}</div>
+        <div class="digest-stat-value yellow">+${d.xpToday}</div>
         <div class="digest-stat-label">XP Today</div>
       </div>
       <div class="digest-stat">
@@ -1024,7 +1039,7 @@ function renderDigest(d) {
 // --- Stats ---
 function openStatsModal() {
   statsModal.classList.remove('hidden')
-  statsGrid.innerHTML = '<div class="loading-state" style="grid-column:span 2">LOADING...</div>'
+    statsGrid.innerHTML = '<div class="skel-stats"><div class="skel skel-stat"></div><div class="skel skel-stat"></div><div class="skel skel-stat"></div><div class="skel skel-stat"></div></div>'
   loadStats()
 }
 
@@ -1037,7 +1052,7 @@ async function loadStats() {
     const data = await Storage.getStats()
     statsGrid.innerHTML = renderStats(data)
   } catch (err) {
-    statsGrid.innerHTML = `<div class="stat-card span-2" style="grid-column:span 2;text-align:center;padding:20px"><span class="stat-label">Error loading stats</span></div>`
+    statsGrid.innerHTML = `<div class="stat-card span-2 stat-error"><span class="stat-label">Error loading stats</span></div>`
   }
 }
 
@@ -1045,7 +1060,7 @@ function renderStats(d) {
   return `
     <div class="stat-card">
       <span class="stat-label">Total Habits</span>
-      <span class="stat-value purple">${d.totalHabits}</span>
+      <span class="stat-value">${d.totalHabits}</span>
       <span class="stat-sub">${d.totalHabits} total</span>
     </div>
     <div class="stat-card">
@@ -1055,12 +1070,12 @@ function renderStats(d) {
     </div>
     <div class="stat-card">
       <span class="stat-label">Best Streak</span>
-      <span class="stat-value orange">${d.bestStreak}d</span>
+      <span class="stat-value yellow">${d.bestStreak}d</span>
       <span class="stat-sub">${escHtml(d.bestStreakName || '—')}</span>
     </div>
     <div class="stat-card">
       <span class="stat-label">Weekly Completion</span>
-      <span class="stat-value ${d.completionRate >= 70 ? 'green' : d.completionRate >= 40 ? 'yellow' : 'pink'}">${d.completionRate}%</span>
+      <span class="stat-value ${d.completionRate >= 70 ? 'green' : d.completionRate >= 40 ? 'yellow' : ''}">${d.completionRate}%</span>
       <span class="stat-sub">${d.weekCheckins} / ${d.weekTotalDays} check-ins</span>
     </div>
     <div class="stat-card span-2">
@@ -1284,7 +1299,9 @@ async function registerSw() {
 // ============================================
 
 async function loadHabits() {
-  habitsList.innerHTML = '<div class="loading-state">LOADING...</div>'
+  habitsList.innerHTML = Array(3).fill(
+    '<div class="skel-card"><span class="skel skel-dot"></span><span class="skel skel-grow"><span class="skel skel-line short"></span><span class="skel skel-line tiny"></span></span></div>'
+  ).join('')
 
   try {
     const data = await Storage.getHabits()
@@ -1441,6 +1458,10 @@ function initApp() {
 
   // Add habit button
   addBtn.addEventListener('click', addHabit)
+
+  // Empty state CTA — jump to the habit input
+  const emptyCta = document.getElementById('emptyCta')
+  if (emptyCta) emptyCta.addEventListener('click', () => habitInput.focus())
 
   // Digest modal
   digestBtn.addEventListener('click', openDigestModal)

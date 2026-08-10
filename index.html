@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>HABBY — Habits & Streaks</title>
     <meta name="description" content="Track your habits, build streaks, level up." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AF%3C/text%3E%3C/svg%3E" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="HABBY — Habits & Streaks" />
+    <meta property="og:description" content="Track your habits, build streaks, level up." />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
     <style>
@@ -89,9 +93,10 @@
             <!-- Populated by JS -->
           </div>
           <div class="empty-state" id="emptyState">
-            <div class="empty-icon">✨</div>
-            <h3 class="empty-title">No habits yet</h3>
+            <div class="empty-icon">🏆</div>
+            <h3 class="empty-title">Plant your first streak</h3>
             <p class="empty-text" id="emptyText">Add your first habit above and start your streak!</p>
+            <button class="empty-cta" id="emptyCta">+ ADD A HABIT</button>
           </div>
         </section>
 
@@ -165,7 +170,7 @@
               <span>Reminder time</span>
               <input type="time" id="notifTime" class="notif-time-input" value="09:00" />
             </label>
-            <button class="btn-modal primary" id="notifTestBtn" style="width:100%;margin-top:8px">🔔 TEST NOTIFICATION</button>
+            <button class="btn-modal primary btn-full" id="notifTestBtn">🔔 TEST NOTIFICATION</button>
           </div>
         </div>
       </div>
