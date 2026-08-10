@@ -89,30 +89,18 @@ function randomId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }
 
-function calculateStreak(dates, todayDate) {
-  if (!dates || dates.length === 0) return 0
-  const dateSet = new Set(dates)
-  let streak = 0
-  let checkDate = new Date(todayDate + 'T00:00:00')
-  if (!dateSet.has(todayDate)) checkDate.setDate(checkDate.getDate() - 1)
-  while (true) {
-    const ds = checkDate.toISOString().slice(0, 10)
-    if (dateSet.has(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1) }
-    else break
-  }
-  return streak
+function calcXpForTask(priority) {
+  return { high: 25, medium: 15, low: 10 }[priority] || 10
 }
 
-// --- XP & Levels ---
-function calcXpForCheckin(streak) {
-  return 10 + Math.min(streak, 30)
-}
 function calcLevel(totalXP) {
   return Math.floor(totalXP / 100) + 1
 }
+
 function calcXpForLevel(level) {
   return (level - 1) * 100
 }
+
 function calcXpProgress(totalXP) {
   const level = calcLevel(totalXP)
   const current = totalXP - calcXpForLevel(level)
@@ -120,30 +108,20 @@ function calcXpProgress(totalXP) {
   return { level, xp: totalXP, current, needed, progress: current / needed }
 }
 
-
-// --- Build habit object helper ---
-async function buildHabit(id) {
-  const data = await redis.hgetall(`habit:${id}`)
+// --- Build todo object helper ---
+async function buildTodo(id) {
+  const data = await redis.hgetall(`todo:${id}`)
   if (!data || !data.name) return null
-
-  const dates = await redis.smembers(`habit:${id}:dates`)
-  const timerRunning = await redis.get(`habit:${id}:timer:running`)
-  const timerTotal = parseInt(await redis.get(`habit:${id}:timer:total`) || '0', 10)
-  const noteToday = await redis.get(`habit:${id}:note:${today()}`)
-
   return {
     id,
     name: data.name,
     emoji: data.emoji || '✅',
-    color: data.color || '#FF3366',
-    archived: data.archived === 'true',
-    created_at: data.created_at,
-    streak: calculateStreak(dates, today()),
-    checkedToday: dates.includes(today()),
-    dates: dates.sort().reverse().slice(0, 60),
-    timerRunning: timerRunning ? parseInt(timerRunning, 10) : null,
-    timerTotal: timerTotal,
-    noteToday: noteToday || null
+    priority: data.priority || 'medium',
+    dueDate: data.dueDate || null,
+    completed: data.completed === 'true',
+    completedAt: data.completedAt || null,
+    xpEarned: parseInt(data.xpEarned || '0', 10),
+    created_at: data.created_at
   }
 }
 
@@ -152,224 +130,157 @@ async function buildXp() {
   return calcXpProgress(totalXP)
 }
 
+async function getTotalXp() {
+  return parseInt(await redis.get('user:xp') || '0', 10)
+}
+
+async function setTotalXp(total) {
+  await redis.set('user:xp', Math.max(0, total))
+}
+
 // --- API Routes ---
 
-// GET /api/habits
-app.get('/api/habits', async (req, res) => {
+// GET /api/todos
+app.get('/api/todos', async (req, res) => {
   try {
-    const ids = await redis.zrevrange('habits:all', 0, -1)
-    if (!ids.length) return res.json({ habits: [], xp: await buildXp() })
+    const ids = await redis.zrevrange('todos:all', 0, -1)
+    if (!ids.length) return res.json({ todos: [], xp: await buildXp() })
 
-    const results = await Promise.all(ids.map(id => buildHabit(id)))
-    const habits = results.filter(Boolean)
+    const results = await Promise.all(ids.map(id => buildTodo(id)))
+    const todos = results.filter(Boolean)
 
-    res.json({ habits, xp: await buildXp() })
+    res.json({ todos, xp: await buildXp() })
   } catch (err) {
-    console.error('GET /api/habits error:', err)
-    res.status(500).json({ error: 'Failed to fetch habits' })
+    console.error('GET /api/todos error:', err)
+    res.status(500).json({ error: 'Failed to fetch todos' })
   }
 })
 
-// POST /api/habits
-app.post('/api/habits', async (req, res) => {
+// POST /api/todos
+app.post('/api/todos', async (req, res) => {
   try {
-    const { name, emoji, color } = req.body
+    const { name, emoji, priority, dueDate } = req.body
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Habit name is required' })
+      return res.status(400).json({ error: 'Task name is required' })
     }
+    if (priority && !['low', 'medium', 'high'].includes(priority)) {
+      return res.status(400).json({ error: 'Invalid priority' })
+    }
+    const due = dueDate && /^\d{4}-\d{2}-\d{2}$/.test(dueDate) ? dueDate : null
 
     const id = randomId()
     const now = new Date().toISOString()
 
     await redis.pipeline()
-      .hset(`habit:${id}`, {
-        name: name.trim(), emoji: emoji || '✅',
-        color: color || '#FF3366',
-        archived: 'false', created_at: now
+      .hset(`todo:${id}`, {
+        name: name.trim(),
+        emoji: emoji || '✅',
+        priority: priority || 'medium',
+        dueDate: due || '',
+        completed: 'false',
+        completedAt: '',
+        xpEarned: '0',
+        created_at: now
       })
-      .zadd('habits:all', Date.now(), id)
+      .zadd('todos:all', Date.now(), id)
       .exec()
 
     res.json({
       id, name: name.trim(), emoji: emoji || '✅',
-      color: color || '#FF3366',
-      archived: false,
-      created_at: now, streak: 0, checkedToday: false, dates: [],
-      timerRunning: null, timerTotal: 0, noteToday: null
+      priority: priority || 'medium', dueDate: due,
+      completed: false, completedAt: null, xpEarned: 0, created_at: now
     })
   } catch (err) {
-    console.error('POST /api/habits error:', err)
-    res.status(500).json({ error: 'Failed to create habit' })
+    console.error('POST /api/todos error:', err)
+    res.status(500).json({ error: 'Failed to create todo' })
   }
 })
 
-// DELETE /api/habits/:id
-app.delete('/api/habits/:id', async (req, res) => {
+// DELETE /api/todos/:id
+app.delete('/api/todos/:id', async (req, res) => {
   try {
     const { id } = req.params
-    const dates = await redis.smembers(`habit:${id}:dates`)
-    const totalXp = parseInt(await redis.get('user:xp') || '0', 10)
-    let xpDeduction = 0
-    let streakAccum = 0
-    for (const d of dates.sort()) {
-      streakAccum++
-      xpDeduction += calcXpForCheckin(streakAccum)
+    const todo = await buildTodo(id)
+    if (!todo) return res.status(404).json({ error: 'Todo not found' })
+
+    // Refund XP if the task was completed
+    if (todo.completed && todo.xpEarned > 0) {
+      await setTotalXp((await getTotalXp()) - todo.xpEarned)
     }
-    await redis.set('user:xp', Math.max(0, totalXp - xpDeduction))
-
-    // Clean up notes
-    const pipe = redis.pipeline()
-      .del(`habit:${id}`)
-      .del(`habit:${id}:dates`)
-      .del(`habit:${id}:timer:running`)
-      .del(`habit:${id}:timer:total`)
-      .zrem('habits:all', id)
-    // Delete all notes for this habit
-    for (const d of dates) {
-      pipe.del(`habit:${id}:note:${d}`)
-    }
-    await pipe.exec()
-    res.json({ success: true })
-  } catch (err) {
-    console.error('DELETE /api/habits error:', err)
-    res.status(500).json({ error: 'Failed to delete habit' })
-  }
-})
-
-// POST /api/habits/:id/checkin
-app.post('/api/habits/:id/checkin', async (req, res) => {
-  try {
-    const { id } = req.params
-    const date = today()
-    await redis.sadd(`habit:${id}:dates`, date)
-
-    const dates = await redis.smembers(`habit:${id}:dates`)
-    const streak = calculateStreak(dates, date)
-    const xpGained = calcXpForCheckin(streak)
-
-    const totalXp = parseInt(await redis.get('user:xp') || '0', 10)
-    await redis.set('user:xp', totalXp + xpGained)
-
-    // Check for note
-    const noteToday = await redis.get(`habit:${id}:note:${date}`)
-
-    res.json({
-      success: true, checkedToday: true, streak,
-      xpGained, xp: calcXpProgress(totalXp + xpGained),
-      dates: dates.sort().reverse().slice(0, 60),
-      noteToday: noteToday || null
-    })
-  } catch (err) {
-    console.error('POST /api/habits/:id/checkin error:', err)
-    res.status(500).json({ error: 'Failed to check in' })
-  }
-})
-
-// DELETE /api/habits/:id/checkin
-app.delete('/api/habits/:id/checkin', async (req, res) => {
-  try {
-    const { id } = req.params
-    const date = today()
-    await redis.srem(`habit:${id}:dates`, date)
-
-    const dates = await redis.smembers(`habit:${id}:dates`)
-    const streak = calculateStreak(dates, date)
-
-    const xpLost = calcXpForCheckin(streak + 1)
-    const totalXp = parseInt(await redis.get('user:xp') || '0', 10)
-    await redis.set('user:xp', Math.max(0, totalXp - xpLost))
-
-    res.json({
-      success: true, checkedToday: false, streak,
-      xpLost, xp: calcXpProgress(Math.max(0, totalXp - xpLost)),
-      dates: dates.sort().reverse().slice(0, 60)
-    })
-  } catch (err) {
-    console.error('DELETE /api/habits/:id/checkin error:', err)
-    res.status(500).json({ error: 'Failed to undo check-in' })
-  }
-})
-
-// --- NOTES ---
-
-// PUT /api/habits/:id/note - Save note for today
-app.put('/api/habits/:id/note', async (req, res) => {
-  try {
-    const { id } = req.params
-    const { text } = req.body
-    const date = today()
-
-    if (text && text.trim()) {
-      await redis.set(`habit:${id}:note:${date}`, text.trim())
-    } else {
-      await redis.del(`habit:${id}:note:${date}`)
-    }
-
-    res.json({ success: true, note: text?.trim() || null })
-  } catch (err) {
-    console.error('PUT /api/habits/:id/note error:', err)
-    res.status(500).json({ error: 'Failed to save note' })
-  }
-})
-
-// GET /api/habits/:id/note/:date
-app.get('/api/habits/:id/note/:date', async (req, res) => {
-  try {
-    const { id, date } = req.params
-    const note = await redis.get(`habit:${id}:note:${date}`)
-    res.json({ note: note || null })
-  } catch (err) {
-    console.error('GET /api/habits/:id/note/:date error:', err)
-    res.status(500).json({ error: 'Failed to get note' })
-  }
-})
-
-// --- TIMER ---
-
-app.post('/api/habits/:id/timer/start', async (req, res) => {
-  try {
-    const { id } = req.params
-    const now = Date.now()
-    await redis.set(`habit:${id}:timer:running`, String(now))
-    res.json({ success: true, startTime: now })
-  } catch (err) {
-    console.error('POST timer/start error:', err)
-    res.status(500).json({ error: 'Failed to start timer' })
-  }
-})
-
-app.post('/api/habits/:id/timer/stop', async (req, res) => {
-  try {
-    const { id } = req.params
-    const startTime = await redis.get(`habit:${id}:timer:running`)
-    if (!startTime) return res.status(400).json({ error: 'Timer not running' })
-
-    const now = Date.now()
-    const elapsed = Math.floor((now - parseInt(startTime, 10)) / 1000)
-    const total = parseInt(await redis.get(`habit:${id}:timer:total`) || '0', 10)
-    const newTotal = total + elapsed
 
     await redis.pipeline()
-      .del(`habit:${id}:timer:running`)
-      .set(`habit:${id}:timer:total`, String(newTotal))
+      .del(`todo:${id}`)
+      .zrem('todos:all', id)
       .exec()
 
-    res.json({ success: true, elapsed, total: newTotal, startTime: null })
+    res.json({ success: true })
   } catch (err) {
-    console.error('POST timer/stop error:', err)
-    res.status(500).json({ error: 'Failed to stop timer' })
+    console.error('DELETE /api/todos error:', err)
+    res.status(500).json({ error: 'Failed to delete todo' })
   }
 })
 
-app.get('/api/habits/:id/timer', async (req, res) => {
+// POST /api/todos/:id/complete
+app.post('/api/todos/:id/complete', async (req, res) => {
   try {
     const { id } = req.params
-    const running = await redis.get(`habit:${id}:timer:running`)
-    const total = parseInt(await redis.get(`habit:${id}:timer:total`) || '0', 10)
-    res.json({ running: running ? parseInt(running, 10) : null, total })
+    const todo = await buildTodo(id)
+    if (!todo) return res.status(404).json({ error: 'Todo not found' })
+    if (todo.completed) return res.status(400).json({ error: 'Task already completed' })
+
+    const date = today()
+    const xpGained = calcXpForTask(todo.priority)
+    const totalXp = (await getTotalXp()) + xpGained
+
+    await redis.pipeline()
+      .hset(`todo:${id}`, {
+        completed: 'true',
+        completedAt: date,
+        xpEarned: String(xpGained)
+      })
+      .set('user:xp', String(totalXp))
+      .exec()
+
+    res.json({
+      success: true,
+      xpGained,
+      xp: calcXpProgress(totalXp),
+      todo: { ...todo, completed: true, completedAt: date, xpEarned: xpGained }
+    })
   } catch (err) {
-    console.error('GET timer error:', err)
-    res.status(500).json({ error: 'Failed to get timer status' })
+    console.error('POST /api/todos/:id/complete error:', err)
+    res.status(500).json({ error: 'Failed to complete todo' })
+  }
+})
+
+// DELETE /api/todos/:id/complete — undo completion
+app.delete('/api/todos/:id/complete', async (req, res) => {
+  try {
+    const { id } = req.params
+    const todo = await buildTodo(id)
+    if (!todo) return res.status(404).json({ error: 'Todo not found' })
+    if (!todo.completed) return res.status(400).json({ error: 'Task is not completed' })
+
+    const totalXp = (await getTotalXp()) - todo.xpEarned
+
+    await redis.pipeline()
+      .hset(`todo:${id}`, {
+        completed: 'false',
+        completedAt: '',
+        xpEarned: '0'
+      })
+      .set('user:xp', String(Math.max(0, totalXp)))
+      .exec()
+
+    res.json({
+      success: true,
+      xpLost: todo.xpEarned,
+      xp: calcXpProgress(Math.max(0, totalXp)),
+      todo: { ...todo, completed: false, completedAt: null, xpEarned: 0 }
+    })
+  } catch (err) {
+    console.error('DELETE /api/todos/:id/complete error:', err)
+    res.status(500).json({ error: 'Failed to undo todo' })
   }
 })
 
@@ -421,29 +332,17 @@ if (existsSync(distDir)) {
 // GET /api/stats
 app.get('/api/stats', async (req, res) => {
   try {
-    const ids = await redis.zrevrange('habits:all', 0, -1)
-    const totalXP = parseInt(await redis.get('user:xp') || '0', 10)
+    const ids = await redis.zrevrange('todos:all', 0, -1)
+    const totalXP = await getTotalXp()
 
-    const habits = []
+    const todos = []
     for (const id of ids) {
-      const h = await buildHabit(id)
-      if (h) habits.push(h)
+      const t = await buildTodo(id)
+      if (t) todos.push(t)
     }
 
-    const active = habits.filter(h => !h.archived)
-    const archived = habits.filter(h => h.archived)
-
-    // Calculate stats
     const now = new Date()
-    const todayStr = now.toISOString().slice(0, 10)
-
-    // Best streak
-    let bestStreak = 0
-    let bestStreakName = ''
-
-    // This week check-ins and XP
-    let weekCheckins = 0
-    let weekTotalDays = 0
+    const todayStr = today()
     const weekAgo = new Date(now)
     weekAgo.setDate(weekAgo.getDate() - 6)
     const weekDates = []
@@ -453,48 +352,33 @@ app.get('/api/stats', async (req, res) => {
       weekDates.push(d.toISOString().slice(0, 10))
     }
 
-    // Per-day check-in count for this week
+    const active = todos.filter(t => !t.completed)
+    const completed = todos.filter(t => t.completed)
+    const overdue = active.filter(t => t.dueDate && t.dueDate < todayStr)
+    const dueToday = active.filter(t => t.dueDate === todayStr)
+
     const weekDailyCounts = weekDates.map(() => 0)
-
-    for (const h of active) {
-      if (h.streak > bestStreak) {
-        bestStreak = h.streak
-        bestStreakName = h.name
-      }
-
-      const habitDates = h.dates || []
-      for (const d of habitDates) {
-        const idx = weekDates.indexOf(d)
+    let weekXP = 0
+    for (const t of completed) {
+      if (t.completedAt && t.completedAt >= weekDates[0]) {
+        const idx = weekDates.indexOf(t.completedAt)
         if (idx !== -1) weekDailyCounts[idx]++
+        weekXP += t.xpEarned || 0
       }
-
-      // Count this week's total check-ins
-      weekCheckins += habitDates.filter(d => d >= weekDates[0] && d <= todayStr).length
     }
 
-    // Total possible days (since each habit was created)
-    for (const h of active) {
-      const created = new Date(h.created_at || now)
-      const daysSince = Math.max(1, Math.round((now - created) / (1000 * 60 * 60 * 24)))
-      weekTotalDays += Math.min(7, daysSince)
-    }
-
-    const completionRate = weekTotalDays > 0 ? Math.round((weekCheckins / weekTotalDays) * 100) : 0
-
-    // Weekly XP (estimated from check-ins this week)
-    const weekXp = weekCheckins * 15
+    const completedCount = todos.length > 0 ? completed.length : 0
+    const completionRate = todos.length > 0 ? Math.round((completed.length / todos.length) * 100) : 0
 
     res.json({
-      totalHabits: habits.length,
-      activeHabits: active.length,
-      archivedHabits: archived.length,
-      totalXP,
-      bestStreak,
-      bestStreakName,
-      weekCheckins,
-      weekTotalDays,
+      totalTodos: todos.length,
+      activeTodos: active.length,
+      completedTodos: completedCount,
+      overdueCount: overdue.length,
+      dueTodayCount: dueToday.length,
       completionRate,
-      weekXp,
+      totalXP,
+      weekXP,
       weekDailyCounts,
       weekDates
     })
@@ -509,39 +393,26 @@ app.get('/api/stats', async (req, res) => {
 // GET /api/digest
 app.get('/api/digest', async (req, res) => {
   try {
-    const ids = await redis.zrevrange('habits:all', 0, -1)
-    const totalXP = parseInt(await redis.get('user:xp') || '0', 10)
+    const ids = await redis.zrevrange('todos:all', 0, -1)
+    const totalXP = await getTotalXp()
 
-    const habits = []
+    const todos = []
     for (const id of ids) {
-      const h = await buildHabit(id)
-      if (h) habits.push(h)
+      const t = await buildTodo(id)
+      if (t) todos.push(t)
     }
 
-    const active = habits.filter(h => !h.archived)
-    const checked = active.filter(h => h.checkedToday)
-    const pending = active.filter(h => !h.checkedToday)
+    const todayStr = today()
+    const active = todos.filter(t => !t.completed)
+    const dueToday = active.filter(t => t.dueDate === todayStr)
+    const overdue = active.filter(t => t.dueDate && t.dueDate < todayStr)
+    const completedToday = todos.filter(t => t.completed && t.completedAt === todayStr)
 
-    // XP earned today: sum of recent checkins (estimate via streak calc)
     let xpToday = 0
-    for (const h of checked) {
-      xpToday += calcXpForCheckin(h.streak)
+    for (const t of completedToday) {
+      xpToday += t.xpEarned || 0
     }
 
-    // Best streak among active habits
-    let bestStreak = 0
-    let bestStreakName = ''
-    for (const h of active) {
-      if (h.streak > bestStreak) {
-        bestStreak = h.streak
-        bestStreakName = h.name
-      }
-    }
-
-    // Total streaks (sum of all active streaks)
-    const totalStreaks = active.reduce((s, h) => s + h.streak, 0)
-
-    // Today's date formatted
     const now = new Date()
     const dateStr = now.toLocaleDateString('en', {
       weekday: 'long',
@@ -551,22 +422,15 @@ app.get('/api/digest', async (req, res) => {
 
     res.json({
       date: dateStr,
-      totalHabits: active.length,
-      checkedCount: checked.length,
-      pendingCount: pending.length,
+      openCount: active.length,
+      dueTodayCount: dueToday.length,
+      overdueCount: overdue.length,
+      completedTodayCount: completedToday.length,
       totalXP,
       xpToday,
-      bestStreak,
-      bestStreakName,
-      totalStreaks,
-      checked: checked.map(h => ({
-        id: h.id, name: h.name, emoji: h.emoji,
-        streak: h.streak, color: h.color,
-        note: h.noteToday
-      })),
-      pending: pending.map(h => ({
-        id: h.id, name: h.name, emoji: h.emoji,
-        streak: h.streak, color: h.color,      }))
+      dueToday: dueToday.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority })),
+      overdue: overdue.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority, dueDate: t.dueDate })),
+      completedToday: completedToday.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority }))
     })
   } catch (err) {
     console.error('GET /api/digest error:', err)

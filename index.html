@@ -3,12 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>HABBY — Habits & Streaks</title>
-    <meta name="description" content="Track your habits, build streaks, level up." />
+    <title>HABBY — Todos & XP</title>
+    <meta name="description" content="Crush your tasks, level up." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AF%3C/text%3E%3C/svg%3E" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="HABBY — Habits & Streaks" />
-    <meta property="og:description" content="Track your habits, build streaks, level up." />
+    <meta property="og:title" content="HABBY — Todos & XP" />
+    <meta property="og:description" content="Crush your tasks, level up." />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
     <style>
@@ -26,7 +26,7 @@
       <header class="header">
         <div class="header-inner">
           <div class="header-brand">
-            <span class="header-logo">🎯</span>
+            <span class="header-logo" id="logoBtn" title="triple-tap for owner login">🎯</span>
             <span class="header-title">HABBY</span>
           </div>
           <div class="header-actions">
@@ -35,7 +35,7 @@
             <button class="btn-header-icon" id="statsBtn" title="Statistics">📊</button>
             <button class="btn-header-icon" id="notifBtn" title="Notification settings">🔔</button>
             <button class="btn-header-icon" id="logoutBtn" title="Lock app">🚪</button>
-            <span class="stat-badge" id="totalStreaks">🔥 0</span>
+            <span class="stat-badge" id="openBadge">📌 0</span>
           </div>
         </div>
         <!-- XP Bar -->
@@ -51,80 +51,78 @@
       </header>
 
       <main class="main" role="main">
-        <!-- ADD HABIT FORM -->
-        <section class="add-habit-section">
-          <div class="add-habit-card">
-            <h2 class="add-habit-title">NEW HABIT</h2>
-            <div class="add-habit-form">
+        <!-- ADD TASK FORM -->
+        <section class="add-todo-section">
+          <div class="add-todo-card">
+            <h2 class="add-todo-title">NEW TASK</h2>
+            <div class="add-todo-form">
               <div class="emoji-picker" id="emojiPicker">
-                <button class="emoji-option selected" data-emoji="🏃">🏃</button>
+                <button class="emoji-option selected" data-emoji="✅">✅</button>
+                <button class="emoji-option" data-emoji="🔥">🔥</button>
                 <button class="emoji-option" data-emoji="📚">📚</button>
-                <button class="emoji-option" data-emoji="💧">💧</button>
-                <button class="emoji-option" data-emoji="🧘">🧘</button>
-                <button class="emoji-option" data-emoji="✍️">✍️</button>
                 <button class="emoji-option" data-emoji="💪">💪</button>
-                <button class="emoji-option" data-emoji="🥗">🥗</button>
+                <button class="emoji-option" data-emoji="💧">💧</button>
                 <button class="emoji-option" data-emoji="🧠">🧠</button>
-                <button class="emoji-option" data-emoji="🎨">🎨</button>
+                <button class="emoji-option" data-emoji="✍️">✍️</button>
+                <button class="emoji-option" data-emoji="📧">📧</button>
+                <button class="emoji-option" data-emoji="📅">📅</button>
+                <button class="emoji-option" data-emoji="🛒">🛒</button>
                 <button class="emoji-option" data-emoji="🧹">🧹</button>
-                <button class="emoji-option" data-emoji="🌅">🌅</button>
+                <button class="emoji-option" data-emoji="💻">💻</button>
+                <button class="emoji-option" data-emoji="🏃">🏃</button>
+                <button class="emoji-option" data-emoji="🥗">🥗</button>
+                <button class="emoji-option" data-emoji="🚿">🚿</button>
                 <button class="emoji-option" data-emoji="🌙">🌙</button>
-                <button class="emoji-option" data-emoji="☕">☕</button>
-                <button class="emoji-option" data-emoji="🚶">🚶</button>
-                <button class="emoji-option" data-emoji="🎵">🎵</button>
-                <button class="emoji-option" data-emoji="🗣️">🗣️</button>
               </div>
 
-              <div class="add-habit-input-row">
-                <input type="text" id="habitInput" class="habit-input" placeholder="e.g. Run 5 kilometers..." maxlength="60" autocomplete="off" />
-                <button id="addHabitBtn" class="btn-add">+ ADD</button>
+              <div class="add-todo-input-row">
+                <input type="text" id="todoInput" class="todo-input" placeholder="e.g. Finish the report..." maxlength="80" autocomplete="off" />
+                <button id="addTodoBtn" class="btn-add">+ ADD</button>
+              </div>
+
+              <div class="add-todo-options">
+                <label class="option-field">
+                  <span class="option-label">PRIORITY</span>
+                  <select id="prioritySelect" class="priority-select">
+                    <option value="low">🟢 LOW</option>
+                    <option value="medium" selected>🟡 MED</option>
+                    <option value="high">🔴 HIGH</option>
+                  </select>
+                </label>
+                <label class="option-field">
+                  <span class="option-label">DUE DATE</span>
+                  <input type="date" id="dueDateInput" class="date-input" />
+                </label>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- TODAY'S HABITS -->
-        <section class="habits-section">
+        <!-- TASKS -->
+        <section class="todos-section">
           <div class="section-head">
-            <h2 class="section-title">TODAY</h2>
-            <span class="section-sub" id="habitsCount">0 habits</span>
+            <h2 class="section-title" id="listTitle">ALL TASKS</h2>
+            <span class="section-sub" id="todosCount">0 tasks</span>
           </div>
-          <div class="habits-list" id="habitsList">
+
+          <div class="filter-tabs" id="filterTabs">
+            <button class="filter-tab active" data-filter="all">ALL</button>
+            <button class="filter-tab" data-filter="today">TODAY <span class="filter-count" id="countToday">0</span></button>
+            <button class="filter-tab" data-filter="upcoming">UPCOMING</button>
+            <button class="filter-tab" data-filter="done">DONE <span class="filter-count" id="countDone">0</span></button>
+          </div>
+
+          <div class="todos-list" id="todosList">
             <!-- Populated by JS -->
           </div>
           <div class="empty-state" id="emptyState">
             <div class="empty-icon">🏆</div>
-            <h3 class="empty-title">Plant your first streak</h3>
-            <p class="empty-text" id="emptyText">Add your first habit above and start your streak!</p>
-            <button class="empty-cta" id="emptyCta">+ ADD A HABIT</button>
-          </div>
-        </section>
-
-        <!-- THIS WEEK OVERVIEW -->
-        <section class="week-section" id="weekSection">
-          <div class="section-head">
-            <h2 class="section-title">THIS WEEK</h2>
-          </div>
-          <div class="week-grid" id="weekGrid">
-            <!-- Populated by JS -->
+            <h3 class="empty-title" id="emptyTitle">All clear!</h3>
+            <p class="empty-text" id="emptyText">Add a task above and start earning XP.</p>
+            <button class="empty-cta" id="emptyCta">+ ADD A TASK</button>
           </div>
         </section>
       </main>
-
-      <!-- NOTE MODAL -->
-      <div class="modal-overlay hidden" id="noteModal">
-        <div class="modal-card">
-          <div class="modal-header">
-            <span class="modal-title" id="noteModalTitle">📝 Add Note</span>
-            <button class="modal-close" id="noteModalClose">✕</button>
-          </div>
-          <textarea class="note-input" id="noteInput" placeholder="How did it go? Any reflections?" maxlength="500" rows="4"></textarea>
-          <div class="modal-actions">
-            <button class="btn-modal secondary" id="noteDeleteBtn">DELETE</button>
-            <button class="btn-modal primary" id="noteSaveBtn">SAVE</button>
-          </div>
-        </div>
-      </div>
 
       <!-- DIGEST MODAL -->
       <div class="modal-overlay hidden" id="digestModal">

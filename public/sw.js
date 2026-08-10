@@ -1,5 +1,5 @@
 // HABBY — Service Worker
-const CACHE = 'habby-v1'
+const CACHE = 'habby-v2-todos'
 const ASSETS = ['/', '/index.html', '/css/style.css', '/js/main.js']
 
 self.addEventListener('install', (e) => {

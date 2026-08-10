@@ -1,13 +1,15 @@
 // ============================================
-// HABBY — Habits & Streaks Tracker
+// HABBY — Todos & XP
 // Public localStorage mode + Owner Redis mode
 // ============================================
 
+import { calcXpForTask, calcLevel, calcXpForLevel, calcXpProgress } from '../lib/logic.js'
+
 const API = '/api'
-let habits = []
+let todos = []
 let xpState = { level: 1, xp: 0, current: 0, needed: 100, progress: 0 }
-let timerIntervals = {}
-let noteTargetId = null
+let currentFilter = 'all'
+let pendingDelete = null
 let reminderInterval = null
 let accessPassword = localStorage.getItem('habby-password') || ''
 
@@ -16,15 +18,20 @@ const $ = sel => document.querySelector(sel)
 
 const appEl = $('#app')
 
-const habitsList = $('#habitsList')
+const todosList = $('#todosList')
 const emptyState = $('#emptyState')
+const emptyTitle = $('#emptyTitle')
 const emptyText = $('#emptyText')
-const weekGrid = $('#weekGrid')
-const weekSection = $('#weekSection')
-const habitsCount = $('#habitsCount')
-const totalStreaks = $('#totalStreaks')
-const habitInput = $('#habitInput')
-const addBtn = $('#addHabitBtn')
+const emptyCta = $('#emptyCta')
+const listTitle = $('#listTitle')
+const todosCount = $('#todosCount')
+const openBadge = $('#openBadge')
+const countToday = $('#countToday')
+const countDone = $('#countDone')
+const todoInput = $('#todoInput')
+const addBtn = $('#addTodoBtn')
+const prioritySelect = $('#prioritySelect')
+const dueDateInput = $('#dueDateInput')
 const toastContainer = $('#toastContainer')
 
 // XP DOM
@@ -43,14 +50,6 @@ const statsBtn = $('#statsBtn')
 const statsModal = $('#statsModal')
 const statsGrid = $('#statsGrid')
 const statsModalClose = $('#statsModalClose')
-
-// Note modal
-const noteModal = $('#noteModal')
-const noteModalTitle = $('#noteModalTitle')
-const noteInput = $('#noteInput')
-const noteSaveBtn = $('#noteSaveBtn')
-const noteDeleteBtn = $('#noteDeleteBtn')
-const noteModalClose = $('#noteModalClose')
 
 // Notification modal
 const notifModal = $('#notifModal')
@@ -80,49 +79,12 @@ function guestRemove(key) {
   localStorage.removeItem('habby:' + key)
 }
 
-function guestGetHabits() {
-  return guestGet('habits') || []
+function guestGetTodos() {
+  return guestGet('todos') || []
 }
 
-function guestSaveHabits(list) {
-  guestSet('habits', list)
-}
-
-function guestGetHabitDates(id) {
-  return guestGet('habit:' + id + ':dates') || []
-}
-
-function guestSaveHabitDates(id, dates) {
-  guestSet('habit:' + id + ':dates', dates)
-}
-
-function guestGetNote(id, date) {
-  return guestGet('habit:' + id + ':note:' + date) || null
-}
-
-function guestSaveNote(id, date, text) {
-  if (text && text.trim()) {
-    guestSet('habit:' + id + ':note:' + date, text.trim())
-  } else {
-    guestRemove('habit:' + id + ':note:' + date)
-  }
-}
-
-function guestGetTimerTotal(id) {
-  return guestGet('habit:' + id + ':timer:total') || 0
-}
-
-function guestSaveTimerTotal(id, total) {
-  guestSet('habit:' + id + ':timer:total', total)
-}
-
-function guestGetTimerRunning(id) {
-  return guestGet('habit:' + id + ':timer:running') || null
-}
-
-function guestSaveTimerRunning(id, ts) {
-  if (ts) guestSet('habit:' + id + ':timer:running', ts)
-  else guestRemove('habit:' + id + ':timer:running')
+function guestSaveTodos(list) {
+  guestSet('todos', list)
 }
 
 function guestGetXp() {
@@ -152,170 +114,80 @@ function guestSaveNotifSettings(enabled, time) {
 const Storage = {
   isOwner() { return !!accessPassword },
 
-  // --- Habits ---
-  async getHabits() {
+  // --- Todos ---
+  async getTodos() {
     if (this.isOwner()) {
-      return api('/habits')
+      return api('/todos')
     }
-    const list = guestGetHabits()
-    const xp = calcXpProgress(guestGetXp())
-    const todayStr = today()
-    const habits = list.map(h => {
-      const dates = guestGetHabitDates(h.id)
-      const noteToday = guestGetNote(h.id, todayStr)
-      const timerRunning = guestGetTimerRunning(h.id)
-      const timerTotal = guestGetTimerTotal(h.id)
-      return {
-        ...h,
-        streak: calculateStreak(dates, todayStr),
-        checkedToday: dates.includes(todayStr),
-        dates: dates.sort().reverse().slice(0, 60),
-        timerRunning,
-        timerTotal,
-        noteToday
-      }
-    })
-    return { habits, xp }
+    const list = guestGetTodos()
+    const xp = guestGetXp()
+    return { todos: list, xp: calcXpProgress(xp) }
   },
 
-  async addHabit(name, emoji, color) {
+  async addTodo(name, emoji, priority, dueDate) {
     if (this.isOwner()) {
-      return api('/habits', {
+      return api('/todos', {
         method: 'POST',
-        body: JSON.stringify({ name, emoji, color })
+        body: JSON.stringify({ name, emoji, priority, dueDate })
       })
     }
-    const id = randomId()
-    const now = new Date().toISOString()
-    const habit = {
-      id, name: name.trim(), emoji: emoji || '✅',
-      color: color || '#FF3366', archived: false, created_at: now
+    const todo = {
+      id: randomId(), name, emoji, priority, dueDate,
+      completed: false, completedAt: null, xpEarned: 0,
+      created_at: new Date().toISOString()
     }
-    const list = guestGetHabits()
-    list.unshift(habit)
-    guestSaveHabits(list)
-    return {
-      id, name: name.trim(), emoji: emoji || '✅',
-      color: color || '#FF3366', archived: false, created_at: now,
-      streak: 0, checkedToday: false, dates: [],
-      timerRunning: null, timerTotal: 0, noteToday: null
+    const list = guestGetTodos()
+    list.push(todo)
+    guestSaveTodos(list)
+    return todo
+  },
+
+  async toggleComplete(id) {
+    if (this.isOwner()) {
+      const todo = todos.find(t => t.id === id)
+      const method = todo && todo.completed ? 'DELETE' : 'POST'
+      return api(`/todos/${id}/complete`, { method })
+    }
+    const list = guestGetTodos()
+    const todo = list.find(t => t.id === id)
+    if (!todo) return null
+
+    if (todo.completed) {
+      const xpLost = todo.xpEarned || 0
+      todo.completed = false
+      todo.completedAt = null
+      todo.xpEarned = 0
+      const xp = Math.max(0, guestGetXp() - xpLost)
+      guestSaveXp(xp)
+      guestSaveTodos(list)
+      return { xpGained: 0, xpLost, xp: calcXpProgress(xp), todo: { ...todo } }
+    } else {
+      const xpGained = calcXpForTask(todo.priority)
+      todo.completed = true
+      todo.completedAt = today()
+      todo.xpEarned = xpGained
+      const xp = guestGetXp() + xpGained
+      guestSaveXp(xp)
+      guestSaveTodos(list)
+      return { xpGained, xpLost: 0, xp: calcXpProgress(xp), todo: { ...todo } }
     }
   },
 
-  async deleteHabit(id) {
+  async deleteTodo(id) {
     if (this.isOwner()) {
-      return api(`/habits/${id}`, { method: 'DELETE' })
+      return api(`/todos/${id}`, { method: 'DELETE' })
     }
-    const list = guestGetHabits()
-    const habit = list.find(h => h.id === id)
-    if (!habit) return { success: true }
-
-    // XP deduction
-    const dates = guestGetHabitDates(id)
-    let xpDeduction = 0
-    let streakAccum = 0
-    for (const d of dates.sort()) {
-      streakAccum++
-      xpDeduction += calcXpForCheckin(streakAccum)
+    const list = guestGetTodos()
+    const todo = list.find(t => t.id === id)
+    if (!todo) return
+    const idx = list.indexOf(todo)
+    list.splice(idx, 1)
+    guestSaveTodos(list)
+    if (todo.completed && todo.xpEarned) {
+      const xp = Math.max(0, guestGetXp() - todo.xpEarned)
+      guestSaveXp(xp)
+      renderXp(calcXpProgress(xp))
     }
-    const totalXp = guestGetXp()
-    guestSaveXp(Math.max(0, totalXp - xpDeduction))
-
-    // Remove habit data
-    const newList = list.filter(h => h.id !== id)
-    guestSaveHabits(newList)
-    guestRemove('habit:' + id + ':dates')
-    guestRemove('habit:' + id + ':timer:running')
-    guestRemove('habit:' + id + ':timer:total')
-    // Remove notes
-    for (const d of dates) {
-      guestRemove('habit:' + id + ':note:' + d)
-    }
-    return { success: true }
-  },
-
-  async checkin(id) {
-    if (this.isOwner()) {
-      return api(`/habits/${id}/checkin`, { method: 'POST' })
-    }
-    const dateStr = today()
-    const dates = guestGetHabitDates(id)
-    if (!dates.includes(dateStr)) dates.push(dateStr)
-    guestSaveHabitDates(id, dates)
-
-    const streak = calculateStreak(dates, dateStr)
-    const xpGained = calcXpForCheckin(streak)
-    const totalXp = guestGetXp()
-    const newTotalXp = totalXp + xpGained
-    guestSaveXp(newTotalXp)
-
-    const noteToday = guestGetNote(id, dateStr)
-    return {
-      success: true, checkedToday: true, streak,
-      xpGained, xp: calcXpProgress(newTotalXp),
-      dates: dates.sort().reverse().slice(0, 60),
-      noteToday
-    }
-  },
-
-  async undoCheckin(id) {
-    if (this.isOwner()) {
-      return api(`/habits/${id}/checkin`, { method: 'DELETE' })
-    }
-    const dateStr = today()
-    let dates = guestGetHabitDates(id)
-    dates = dates.filter(d => d !== dateStr)
-    guestSaveHabitDates(id, dates)
-
-    const streak = calculateStreak(dates, dateStr)
-    const xpLost = calcXpForCheckin(streak + 1)
-    const totalXp = guestGetXp()
-    const newTotalXp = Math.max(0, totalXp - xpLost)
-    guestSaveXp(newTotalXp)
-
-    return {
-      success: true, checkedToday: false, streak,
-      xpLost, xp: calcXpProgress(newTotalXp),
-      dates: dates.sort().reverse().slice(0, 60)
-    }
-  },
-
-  // --- Notes ---
-  async saveNote(id, text) {
-    if (this.isOwner()) {
-      return api(`/habits/${id}/note`, {
-        method: 'PUT',
-        body: JSON.stringify({ text })
-      })
-    }
-    const dateStr = today()
-    guestSaveNote(id, dateStr, text)
-    return { success: true, note: text?.trim() || null }
-  },
-
-  // --- Timer ---
-  async startTimer(id) {
-    if (this.isOwner()) {
-      return api(`/habits/${id}/timer/start`, { method: 'POST' })
-    }
-    const now = Date.now()
-    guestSaveTimerRunning(id, now)
-    return { success: true, startTime: now }
-  },
-
-  async stopTimer(id) {
-    if (this.isOwner()) {
-      return api(`/habits/${id}/timer/stop`, { method: 'POST' })
-    }
-    const startTime = guestGetTimerRunning(id)
-    if (!startTime) return { error: 'Timer not running' }
-    const now = Date.now()
-    const elapsed = Math.floor((now - startTime) / 1000)
-    const total = guestGetTimerTotal(id)
-    const newTotal = total + elapsed
-    guestSaveTimerTotal(id, newTotal)
-    guestSaveTimerRunning(id, null)
-    return { success: true, elapsed, total: newTotal, startTime: null }
   },
 
   // --- Stats ---
@@ -323,16 +195,10 @@ const Storage = {
     if (this.isOwner()) {
       return api('/stats')
     }
-    // Build stats from localStorage
-    const list = guestGetHabits()
+    const list = guestGetTodos()
     const totalXP = guestGetXp()
     const now = new Date()
-    const todayStr = now.toISOString().slice(0, 10)
-
-    let bestStreak = 0
-    let bestStreakName = ''
-    let weekCheckins = 0
-    let weekTotalDays = 0
+    const todayStr = today()
     const weekAgo = new Date(now)
     weekAgo.setDate(weekAgo.getDate() - 6)
     const weekDates = []
@@ -341,42 +207,34 @@ const Storage = {
       d.setDate(d.getDate() + i)
       weekDates.push(d.toISOString().slice(0, 10))
     }
+
+    const active = list.filter(t => !t.completed)
+    const completed = list.filter(t => t.completed)
+    const overdue = active.filter(t => t.dueDate && t.dueDate < todayStr)
+    const dueToday = active.filter(t => t.dueDate === todayStr)
+
     const weekDailyCounts = weekDates.map(() => 0)
-
-    const active = list.filter(h => !h.archived)
-    const archived = list.filter(h => h.archived)
-
-    for (const h of active) {
-      const dates = guestGetHabitDates(h.id)
-      const streak = calculateStreak(dates, todayStr)
-      if (streak > bestStreak) {
-        bestStreak = streak
-        bestStreakName = h.name
-      }
-      for (const d of dates) {
-        const idx = weekDates.indexOf(d)
+    let weekXP = 0
+    for (const t of completed) {
+      if (t.completedAt && t.completedAt >= weekDates[0]) {
+        const idx = weekDates.indexOf(t.completedAt)
         if (idx !== -1) weekDailyCounts[idx]++
+        weekXP += t.xpEarned || 0
       }
-      weekCheckins += dates.filter(d => d >= weekDates[0] && d <= todayStr).length
-      const created = new Date(h.created_at || now)
-      const daysSince = Math.max(1, Math.round((now - created) / (1000 * 60 * 60 * 24)))
-      weekTotalDays += Math.min(7, daysSince)
     }
 
-    const completionRate = weekTotalDays > 0 ? Math.round((weekCheckins / weekTotalDays) * 100) : 0
-    const weekXp = weekCheckins * 15
+    const completedCount = list.length > 0 ? completed.length : 0
+    const completionRate = list.length > 0 ? Math.round((completed.length / list.length) * 100) : 0
 
     return {
-      totalHabits: list.length,
-      activeHabits: active.length,
-      archivedHabits: archived.length,
-      totalXP,
-      bestStreak,
-      bestStreakName,
-      weekCheckins,
-      weekTotalDays,
+      totalTodos: list.length,
+      activeTodos: active.length,
+      completedTodos: completedCount,
+      overdueCount: overdue.length,
+      dueTodayCount: dueToday.length,
       completionRate,
-      weekXp,
+      totalXP,
+      weekXP,
       weekDailyCounts,
       weekDates
     }
@@ -387,38 +245,20 @@ const Storage = {
     if (this.isOwner()) {
       return api('/digest')
     }
-    const list = guestGetHabits()
+    const list = guestGetTodos()
     const totalXP = guestGetXp()
     const now = new Date()
-    const todayStr = now.toISOString().slice(0, 10)
+    const todayStr = today()
 
-    const active = list.filter(h => !h.archived).map(h => {
-      const dates = guestGetHabitDates(h.id)
-      const noteToday = guestGetNote(h.id, todayStr)
-      return {
-        ...h,
-        streak: calculateStreak(dates, todayStr),
-        checkedToday: dates.includes(todayStr),
-        noteToday
-      }
-    })
-    const checked = active.filter(h => h.checkedToday)
-    const pending = active.filter(h => !h.checkedToday)
+    const active = list.filter(t => !t.completed)
+    const dueToday = active.filter(t => t.dueDate === todayStr)
+    const overdue = active.filter(t => t.dueDate && t.dueDate < todayStr)
+    const completedToday = list.filter(t => t.completed && t.completedAt === todayStr)
 
     let xpToday = 0
-    for (const h of checked) {
-      xpToday += calcXpForCheckin(h.streak)
+    for (const t of completedToday) {
+      xpToday += t.xpEarned || 0
     }
-
-    let bestStreak = 0
-    let bestStreakName = ''
-    for (const h of active) {
-      if (h.streak > bestStreak) {
-        bestStreak = h.streak
-        bestStreakName = h.name
-      }
-    }
-    const totalStreaks = active.reduce((s, h) => s + h.streak, 0)
 
     const dateStr = now.toLocaleDateString('en', {
       weekday: 'long', month: 'long', day: 'numeric'
@@ -426,22 +266,15 @@ const Storage = {
 
     return {
       date: dateStr,
-      totalHabits: active.length,
-      checkedCount: checked.length,
-      pendingCount: pending.length,
+      openCount: active.length,
+      dueTodayCount: dueToday.length,
+      overdueCount: overdue.length,
+      completedTodayCount: completedToday.length,
       totalXP,
       xpToday,
-      bestStreak,
-      bestStreakName,
-      totalStreaks,
-      checked: checked.map(h => ({
-        id: h.id, name: h.name, emoji: h.emoji,
-        streak: h.streak, color: h.color, note: h.noteToday
-      })),
-      pending: pending.map(h => ({
-        id: h.id, name: h.name, emoji: h.emoji,
-        streak: h.streak, color: h.color
-      }))
+      dueToday: dueToday.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority })),
+      overdue: overdue.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority, dueDate: t.dueDate })),
+      completedToday: completedToday.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority }))
     }
   },
 
@@ -474,39 +307,6 @@ function today() {
 
 function randomId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
-}
-
-function calculateStreak(dates, todayDate) {
-  if (!dates || dates.length === 0) return 0
-  const dateSet = new Set(dates)
-  let streak = 0
-  let checkDate = new Date(todayDate + 'T00:00:00')
-  if (!dateSet.has(todayDate)) checkDate.setDate(checkDate.getDate() - 1)
-  while (true) {
-    const ds = checkDate.toISOString().slice(0, 10)
-    if (dateSet.has(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1) }
-    else break
-  }
-  return streak
-}
-
-function calcXpForCheckin(streak) {
-  return 10 + Math.min(streak, 30)
-}
-
-function calcLevel(totalXP) {
-  return Math.floor(totalXP / 100) + 1
-}
-
-function calcXpForLevel(level) {
-  return (level - 1) * 100
-}
-
-function calcXpProgress(totalXP) {
-  const level = calcLevel(totalXP)
-  const current = totalXP - calcXpForLevel(level)
-  const needed = 100
-  return { level, xp: totalXP, current, needed, progress: current / needed }
 }
 
 // ============================================
@@ -567,135 +367,100 @@ function showLevelUp(level) {
       <div class="level-up-emoji">${emojis[Math.min(level - 1, emojis.length - 1)]}</div>
       <div class="level-up-title">LEVEL UP!</div>
       <div class="level-up-sub">You reached <strong>Level ${level}</strong></div>
-      <button class="level-up-btn">LET'S GO!</button>
     </div>
   `
-  const sparkles = ['✨', '⭐', '💫', '✨', '⭐', '💫']
-  const wrap = overlay.querySelector('.level-up-sparkles')
-  sparkles.forEach((s, i) => {
-    const span = document.createElement('span')
-    span.className = 'level-up-sparkle'
-    span.textContent = s
-    const angle = (i / sparkles.length) * Math.PI * 2
-    span.style.left = `${-30 + i * 12}px`
-    span.style.top = '0px'
-    span.style.setProperty('--tx', `${Math.round(Math.cos(angle) * 78)}px`)
-    span.style.setProperty('--ty', `${Math.round(Math.sin(angle) * 78)}px`)
-    span.style.animationDelay = `${i * 0.06}s`
-    wrap.appendChild(span)
-  })
-  overlay.querySelector('.level-up-btn').addEventListener('click', () => overlay.remove())
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
   document.body.appendChild(overlay)
+  overlay.addEventListener('click', () => overlay.remove())
+  setTimeout(() => {
+    if (overlay.parentNode) overlay.remove()
+  }, 1600)
 }
 
-function renderXp(xpData) {
-  if (!xpData) return
-  xpState = xpData
-  xpLevelBadge.textContent = `LVL ${xpData.level}`
-  xpBarFill.style.width = `${Math.round(xpData.progress * 100)}%`
-  xpNumbers.textContent = `${xpData.current} / ${xpData.needed} XP`
+function renderXp(xp) {
+  xpState = xp
+  xpLevelBadge.textContent = `LVL ${xp.level}`
+  xpBarFill.style.width = `${Math.round(xp.progress * 100)}%`
+  xpNumbers.textContent = `${xp.current} / ${xp.needed} XP`
 }
 
 // ============================================
-// WEEK HELPERS
+// FILTERS
 // ============================================
 
-function getWeekDays() {
-  const days = []
-  const now = new Date()
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now)
-    d.setDate(d.getDate() - i)
-    days.push({
-      date: d.toISOString().slice(0, 10),
-      label: d.toLocaleDateString('en', { weekday: 'short' }).slice(0, 2).toUpperCase(),
-      isToday: i === 0
-    })
+const FILTERS = ['all', 'today', 'upcoming', 'done']
+const FILTER_TITLES = { all: 'ALL TASKS', today: 'TODAY', upcoming: 'UPCOMING', done: 'DONE' }
+
+function todoIsToday(t) {
+  return t.dueDate && t.dueDate <= today()
+}
+
+function getFilteredTodos() {
+  const now = today()
+  let list = [...todos]
+  if (currentFilter === 'today') {
+    list = list.filter(t => !t.completed && t.dueDate && t.dueDate <= now)
+  } else if (currentFilter === 'upcoming') {
+    list = list.filter(t => !t.completed && (!t.dueDate || t.dueDate > now))
+  } else if (currentFilter === 'done') {
+    list = list.filter(t => t.completed)
   }
-  return days
+  const prio = { high: 0, medium: 1, low: 2 }
+  return list.sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1
+    if (a.completed) return (b.completedAt || '') < (a.completedAt || '') ? 1 : -1
+    if (a.priority !== b.priority) return (prio[a.priority] ?? 2) - (prio[b.priority] ?? 2)
+    const ad = a.dueDate || '9999'
+    const bd = b.dueDate || '9999'
+    if (ad !== bd) return ad < bd ? -1 : 1
+    return (b.created_at || '') < (a.created_at || '') ? -1 : 1
+  })
 }
 
-// ============================================
-// TIMER HELPERS
-// ============================================
-
-function formatDuration(seconds) {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = seconds % 60
-  if (h > 0) return `${h}h ${m}m`
-  if (m > 0) return `${m}m ${s}s`
-  return `${s}s`
-}
-
-function getElapsedSeconds(startTime) { return Math.floor((Date.now() - startTime) / 1000) }
-
-function startTimerInterval(id) {
-  if (timerIntervals[id]) clearInterval(timerIntervals[id])
-  timerIntervals[id] = setInterval(() => {
-    const habit = habits.find(h => h.id === id)
-    if (!habit || !habit.timerRunning) {
-      clearInterval(timerIntervals[id])
-      delete timerIntervals[id]
-      return
-    }
-    const card = document.querySelector(`[data-id="${id}"]`)
-    if (card) {
-      const timerEl = card.querySelector('.habit-timer-display')
-      if (timerEl) {
-        const elapsed = getElapsedSeconds(habit.timerRunning)
-        const total = (habit.timerTotal || 0) + elapsed
-        timerEl.textContent = `⏱️ ${formatDuration(total)}`
-      }
-    }
-  }, 1000)
-}
-
-function stopTimerInterval(id) {
-  if (timerIntervals[id]) { clearInterval(timerIntervals[id]); delete timerIntervals[id] }
+function setFilter(filter) {
+  currentFilter = filter
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.filter === filter)
+  })
+  render()
 }
 
 // ============================================
 // RENDER
 // ============================================
 
-function getFilteredHabits() {
-  return [...habits].sort((a, b) => {
-    if (a.checkedToday !== b.checkedToday) return a.checkedToday ? 1 : -1
-    return (b.streak || 0) - (a.streak || 0)
-  })
-}
-
 function render(animatingId) {
-  const sorted = getFilteredHabits()
+  const filtered = getFilteredTodos()
+  const activeCount = todos.filter(t => !t.completed).length
+  const doneCount = todos.filter(t => t.completed).length
+  const todayCount = todos.filter(t => !t.completed && t.dueDate && t.dueDate <= today()).length
 
-  if (sorted.length === 0) {
-    habitsList.innerHTML = ''
+  listTitle.textContent = FILTER_TITLES[currentFilter]
+  todosCount.textContent = `${filtered.length} task${filtered.length !== 1 ? 's' : ''}`
+  openBadge.textContent = `📌 ${activeCount}`
+  countToday.textContent = todayCount
+  countDone.textContent = doneCount
+
+  if (filtered.length === 0) {
+    todosList.innerHTML = ''
     emptyState.classList.remove('hidden')
-    emptyText.textContent = Storage.isOwner()
-      ? 'Add your first habit above and start your streak!'
-      : 'Add your first habit — data saves to this device.'
-    weekSection.style.display = 'none'
+    const empties = {
+      all: { t: 'All clear!', d: Storage.isOwner() ? 'Add your first task above and start earning XP.' : 'Add your first task — data saves to this device.' },
+      today: { t: 'Nothing due today', d: 'Sit back or add a task with a due date.' },
+      upcoming: { t: 'No upcoming tasks', d: 'Tasks without a due date land here.' },
+      done: { t: 'Nothing done yet', d: 'Complete a task to see it here and bank the XP.' }
+    }
+    emptyTitle.textContent = empties[currentFilter].t
+    emptyText.textContent = empties[currentFilter].d
   } else {
     emptyState.classList.add('hidden')
-    weekSection.style.display = 'block'
-    habitsList.innerHTML = sorted.map(h => renderHabitCard(h)).join('')
-    weekGrid.innerHTML = renderWeekGrid(sorted)
+    todosList.innerHTML = filtered.map(t => renderTodoCard(t)).join('')
   }
 
-  const total = sorted.reduce((sum, h) => sum + (h.streak || 0), 0)
-  totalStreaks.textContent = `🔥 ${total}`
-  habitsCount.textContent = `${sorted.length} habit${sorted.length !== 1 ? 's' : ''}`
-
-  sorted.forEach(h => {
-    const card = document.querySelector(`[data-id="${h.id}"]`)
+  filtered.forEach(t => {
+    const card = document.querySelector(`[data-id="${t.id}"]`)
     if (!card) return
-    card.querySelector('.btn-check')?.addEventListener('click', () => toggleCheckin(h.id))
-    card.querySelector('.btn-timer')?.addEventListener('click', () => toggleTimer(h.id))
-    card.querySelector('.btn-note')?.addEventListener('click', () => openNoteModal(h.id))
-    card.querySelector('.btn-delete')?.addEventListener('click', () => deleteHabit(h.id))
-    card.querySelector('.habit-note-indicator')?.addEventListener('click', () => openNoteModal(h.id))
+    card.querySelector('.btn-check')?.addEventListener('click', () => toggleComplete(t.id))
+    card.querySelector('.btn-delete')?.addEventListener('click', () => requestDelete(t.id))
   })
 
   if (animatingId) {
@@ -707,71 +472,43 @@ function render(animatingId) {
   }
 }
 
-function renderHabitCard(h) {
-  const weekDays = getWeekDays()
-  const checked = h.checkedToday
-  const dayLabels = weekDays.map(d => {
-    const done = h.dates && h.dates.includes(d.date)
-    let cls = 'habit-day-label'
-    if (done) cls += ' done'
-    if (d.isToday) cls += ' today'
-    return `<span class="${cls}">${d.isToday ? '★' : (done ? '✓' : '·')}</span>`
-  }).join('')
-
-  const streakEmoji = h.streak >= 30 ? '💎' : h.streak >= 7 ? '🔥' : h.streak >= 1 ? '🔥' : '·'
-
-  let timerDisplay = ''
-  let timerClass = 'btn-timer'
-  let timerIcon = '⏱️'
-  if (h.timerRunning) {
-    timerClass += ' running'
-    timerIcon = '⏹️'
-    const elapsed = getElapsedSeconds(h.timerRunning)
-    const total = (h.timerTotal || 0) + elapsed
-    timerDisplay = `<span class="habit-timer-display running">⏱️ ${formatDuration(total)}</span>`
-  } else if (h.timerTotal > 0) {
-    timerDisplay = `<span class="habit-timer-display">⏱️ ${formatDuration(h.timerTotal)}</span>`
+function dueLabel(t) {
+  const now = today()
+  const d = t.dueDate
+  if (!d) return ''
+  if (t.completed) return `<span class="due-chip done">${escHtml(d.slice(5))}</span>`
+  if (d < now) {
+    const days = Math.round((new Date(now) - new Date(d)) / 86400000)
+    return `<span class="due-chip overdue">⚠ ${days === 0 ? 'OVERDUE' : `${days}d OVERDUE`}</span>`
   }
+  if (d === now) return `<span class="due-chip today">TODAY</span>`
+  const days = Math.round((new Date(d) - new Date(now)) / 86400000)
+  return `<span class="due-chip">${days === 1 ? 'TOMORROW' : `IN ${days}d`} · ${escHtml(d.slice(5))}</span>`
+}
 
-  const noteClass = `btn-note${h.noteToday ? ' has-note' : ''}`
-
+function renderTodoCard(t) {
+  const checked = t.completed
+  const prio = t.priority || 'medium'
+  const prioLabel = { high: 'HIGH', medium: 'MED', low: 'LOW' }
   return `
-    <div class="habit-card ${checked ? 'checked' : ''}" data-id="${h.id}">
-      <div class="habit-emoji">${h.emoji}</div>
-      <div class="habit-info">
-        <div class="habit-name-row">
-          <span class="habit-name ${checked ? 'checked-name' : ''}">${escHtml(h.name)}</span>
+    <div class="todo-card ${checked ? 'checked' : ''} prio-${prio}" data-id="${t.id}">
+      <button class="btn-check ${checked ? 'done' : ''}" title="${checked ? 'Mark not done' : 'Complete task'}">${checked ? '✓' : ''}</button>
+      <div class="todo-info">
+        <div class="todo-name-row">
+          <span class="todo-emoji">${escHtml(t.emoji || '✅')}</span>
+          <span class="todo-name ${checked ? 'checked-name' : ''}">${escHtml(t.name)}</span>
         </div>
-        <div class="habit-meta">
-          <span class="habit-streak"><span class="streak-fire">${streakEmoji}</span> ${h.streak}d</span>
-          ${timerDisplay}
-          <span class="habit-note-indicator${h.noteToday ? ' has-note' : ''}">${h.noteToday ? '📝' : '📄'}</span>
-          <span class="habit-day-labels">${dayLabels}</span>
+        <div class="todo-meta">
+          <span class="prio-badge ${prio}">${prioLabel[prio]}</span>
+          ${dueLabel(t)}
+          ${checked ? `<span class="xp-chip">+${t.xpEarned || 0} XP</span>` : ''}
         </div>
       </div>
-      <div class="habit-actions">
-        <button class="${timerClass}" title="${h.timerRunning ? 'Stop timer' : 'Start timer'}">${timerIcon}</button>
-        <button class="${noteClass}" title="${h.noteToday ? 'Edit note' : 'Add note'}">📝</button>
-        <button class="btn-check ${checked ? 'done' : ''}" title="${checked ? 'Undo check-in' : 'Check in'}">${checked ? '✓' : ''}</button>
-        <button class="btn-delete" title="Delete habit">✕</button>
+      <div class="todo-actions">
+        <button class="btn-delete" title="Delete task">✕</button>
       </div>
     </div>
   `
-}
-
-function renderWeekGrid(sorted) {
-  const weekDays = getWeekDays()
-  return sorted.map(h => {
-    const days = weekDays.map(d => {
-      const done = h.dates && h.dates.includes(d.date)
-      let cls = 'week-day'
-      if (done) cls += ' done'
-      if (d.isToday) cls += ' today'
-      if (!done && !d.isToday && new Date(d.date) > new Date()) cls += ' future'
-      return `<div class="${cls}"><span class="day-label">${d.label}</span>${done ? '✓' : (d.isToday ? '★' : '·')}</div>`
-    }).join('')
-    return `<div class="week-row"><span class="week-row-emoji">${h.emoji}</span><span class="week-row-name">${escHtml(h.name)}</span><div class="week-days">${days}</div></div>`
-  }).join('')
 }
 
 function escHtml(str) {
@@ -784,139 +521,66 @@ function escHtml(str) {
 // ACTIONS
 // ============================================
 
-let pendingDelete = null
-
-async function toggleCheckin(id) {
-  const habit = habits.find(h => h.id === id)
-  if (!habit) return
-  const wasChecked = habit.checkedToday
+async function toggleComplete(id) {
+  const todo = todos.find(t => t.id === id)
+  if (!todo) return
+  const wasCompleted = todo.completed
+  const prevXp = xpState.xp
+  const prevLevel = xpState.level
 
   // Optimistic update
-  habit.checkedToday = !wasChecked
-  if (!wasChecked) {
-    habit.dates = [...(habit.dates || []), new Date().toISOString().slice(0, 10)]
+  if (!wasCompleted) {
+    todo.completed = true
+    todo.completedAt = today()
+    todo.xpEarned = calcXpForTask(todo.priority)
+    xpState = calcXpProgress(xpState.xp + todo.xpEarned)
   } else {
-    habit.dates = (habit.dates || []).filter(d => d !== new Date().toISOString().slice(0, 10))
+    const xpLost = todo.xpEarned || 0
+    todo.completed = false
+    todo.completedAt = null
+    todo.xpEarned = 0
+    xpState = calcXpProgress(Math.max(0, xpState.xp - xpLost))
   }
-  habit.streak = calculateStreak(habit.dates, today())
+  renderXp(xpState)
   render(id)
 
   try {
-    if (wasChecked) {
-      const data = await Storage.undoCheckin(id)
-      habit.streak = calcStreak(data.dates)
-      habit.dates = data.dates || habit.dates
-      if (data.xp) renderXp(data.xp)
-      render()
-      showToast('Check-in undone')
+    const data = await Storage.toggleComplete(id)
+    const idx = todos.findIndex(t => t.id === id)
+    if (idx !== -1 && data && data.todo) todos[idx] = { ...todos[idx], ...data.todo }
+    if (data && data.xp) renderXp(data.xp)
+    render()
+
+    const card = document.querySelector(`[data-id="${id}"]`)
+    if (!wasCompleted && data && data.xpGained && card) {
+      const rect = card.getBoundingClientRect()
+      showXpFloat(data.xpGained, rect.right - 60, rect.top - 10)
+    }
+
+    if (!wasCompleted && data && data.xp && data.xp.level > prevLevel) {
+      setTimeout(() => showLevelUp(data.xp.level), 600)
+      showToast(`🎉 LEVEL UP! You're now Level ${data.xp.level}!`, 'success')
+    } else if (wasCompleted) {
+      showToast('Task marked not done')
     } else {
-      const data = await Storage.checkin(id)
-      habit.streak = calcStreak(data.dates)
-      habit.dates = data.dates || habit.dates
-      habit.noteToday = data.noteToday || null
-
-      const prevLevel = xpState.level
-      if (data.xp) renderXp(data.xp)
-      render()
-
-      const card = document.querySelector(`[data-id="${id}"]`)
-      if (card && data.xpGained) {
-        const rect = card.getBoundingClientRect()
-        showXpFloat(data.xpGained, rect.right - 60, rect.top - 10)
-      }
-
-      if (data.xp && data.xp.level > prevLevel) {
-        setTimeout(() => showLevelUp(data.xp.level), 600)
-        showToast(`🎉 LEVEL UP! You're now Level ${data.xp.level}!`, 'success')
-      } else {
-        showToast('✓ Nice! Keep it going!')
-      }
+      showToast('✓ Nice! Keep it going!')
     }
   } catch (err) {
-    habit.checkedToday = wasChecked
-    if (wasChecked) {
-      habit.dates = [...(habit.dates || []), new Date().toISOString().slice(0, 10)]
-    } else {
-      habit.dates = (habit.dates || []).filter(d => d !== new Date().toISOString().slice(0, 10))
-    }
-    habit.streak = calculateStreak(habit.dates, today())
+    // Rollback
+    todo.completed = wasCompleted
+    todo.completedAt = wasCompleted ? today() : null
+    todo.xpEarned = wasCompleted ? calcXpForTask(todo.priority) : 0
+    xpState = calcXpProgress(prevXp)
+    renderXp(xpState)
     render()
     showToast(err.message, 'error')
   }
 }
 
-// --- Timer ---
-async function toggleTimer(id) {
-  const habit = habits.find(h => h.id === id)
-  if (!habit) return
-
-  if (habit.timerRunning) {
-    habit.timerRunning = null
-    render()
-    stopTimerInterval(id)
-    try {
-      const data = await Storage.stopTimer(id)
-      habit.timerTotal = data.total
-      render()
-      showToast(`⏱️ Session: ${formatDuration(data.elapsed || 0)}`)
-    } catch (err) { showToast(err.message, 'error') }
-  } else {
-    habit.timerRunning = Date.now()
-    render()
-    startTimerInterval(id)
-    try {
-      const data = await Storage.startTimer(id)
-      habit.timerRunning = data.startTime
-      stopTimerInterval(id)
-      startTimerInterval(id)
-      showToast('⏱️ Timer started!')
-    } catch (err) {
-      habit.timerRunning = null; render(); showToast(err.message, 'error')
-    }
-  }
-}
-
-// --- Notes ---
-function openNoteModal(id) {
-  noteTargetId = id
-  const habit = habits.find(h => h.id === id)
-  if (!habit) return
-  noteModalTitle.textContent = `📝 ${habit.emoji} ${escHtml(habit.name)}`
-  noteInput.value = habit.noteToday || ''
-  noteModal.classList.remove('hidden')
-  noteInput.focus()
-}
-
-function closeNoteModal() {
-  noteModal.classList.add('hidden')
-  noteTargetId = null
-}
-
-async function saveNote() {
-  if (!noteTargetId) return
-  const text = noteInput.value.trim()
-  try {
-    await Storage.saveNote(noteTargetId, text)
-    const habit = habits.find(h => h.id === noteTargetId)
-    if (habit) {
-      habit.noteToday = text || null
-      render()
-    }
-    closeNoteModal()
-    showToast(text ? '📝 Note saved!' : 'Note deleted')
-  } catch (err) { showToast(err.message, 'error') }
-}
-
-async function deleteNote() {
-  if (!noteTargetId) return
-  noteInput.value = ''
-  await saveNote()
-}
-
 // --- Delete ---
 function requestDelete(id) {
-  const habit = habits.find(h => h.id === id)
-  if (!habit) return
+  const todo = todos.find(t => t.id === id)
+  if (!todo) return
   if (pendingDelete === id) {
     pendingDelete = null
     performDelete(id)
@@ -928,7 +592,7 @@ function requestDelete(id) {
       card.style.boxShadow = '6px 6px 0 #FF3366'
       card.style.transform = 'translate(-2px, -2px)'
     }
-    showToast(`Tap ✕ again to delete "${habit.name}"`, 'error')
+    showToast(`Tap ✕ again to delete "${todo.name}"`, 'error')
     setTimeout(() => {
       pendingDelete = null
       const card = document.querySelector(`[data-id="${id}"]`)
@@ -938,17 +602,15 @@ function requestDelete(id) {
 }
 
 async function performDelete(id) {
-  const habit = habits.find(h => h.id === id)
-  if (!habit) return
-  stopTimerInterval(id)
-  const idx = habits.indexOf(habit)
-  habits.splice(idx, 1); render()
-  showToast(`Deleted "${habit.name}"`)
-  try { await Storage.deleteHabit(id) }
-  catch (err) { habits.splice(idx, 0, habit); render(); showToast(err.message, 'error') }
+  const todo = todos.find(t => t.id === id)
+  if (!todo) return
+  const idx = todos.indexOf(todo)
+  todos.splice(idx, 1)
+  render()
+  showToast(`Deleted "${todo.name}"`)
+  try { await Storage.deleteTodo(id) }
+  catch (err) { todos.splice(idx, 0, todo); render(); showToast(err.message, 'error') }
 }
-
-function deleteHabit(id) { requestDelete(id) }
 
 // --- Digest ---
 function openDigestModal() {
@@ -971,24 +633,31 @@ async function loadDigest() {
 }
 
 function renderDigest(d) {
-  const checkedItems = d.checked.map(h => `
+  const prioEmoji = { high: '🔴', medium: '🟡', low: '🟢' }
+
+  const dueItems = d.dueToday.map(t => `
     <div class="digest-item">
-      <span class="digest-item-emoji">${h.emoji}</span>
-      <span class="digest-item-name">${escHtml(h.name)}</span>
-      <span class="digest-item-streak">🔥 ${h.streak}d</span>
-      ${h.note ? `<span class="digest-item-note">📝 ${escHtml(h.note.substring(0, 50))}</span>` : ''}
+      <span class="digest-item-emoji">${t.emoji}</span>
+      <span class="digest-item-name">${escHtml(t.name)}</span>
+      <span class="prio-badge ${t.priority}">${(t.priority || 'medium').toUpperCase()}</span>
     </div>
   `).join('')
 
-  const pendingItems = d.pending.map(h => `
-    <div class="digest-item pending">
-      <span class="digest-item-emoji">${h.emoji}</span>
-      <span class="digest-item-name">${escHtml(h.name)}</span>
-      <span class="digest-item-streak">🔥 ${h.streak}d</span>
+  const overdueItems = d.overdue.map(t => `
+    <div class="digest-item">
+      <span class="digest-item-emoji">${t.emoji}</span>
+      <span class="digest-item-name">${escHtml(t.name)}</span>
+      <span class="digest-item-note">⚠ ${escHtml(t.dueDate)}</span>
     </div>
   `).join('')
 
-  const streakColor = d.totalStreaks >= 30 ? 'green' : d.totalStreaks >= 10 ? 'yellow' : ''
+  const doneItems = d.completedToday.map(t => `
+    <div class="digest-item">
+      <span class="digest-item-emoji">${t.emoji}</span>
+      <span class="digest-item-name">${escHtml(t.name)}</span>
+      <span class="digest-item-note">✓</span>
+    </div>
+  `).join('')
 
   return `
     <div class="digest-header">
@@ -997,49 +666,47 @@ function renderDigest(d) {
     </div>
     <div class="digest-stats-row">
       <div class="digest-stat">
-        <div class="digest-stat-value green">${d.checkedCount}</div>
+        <div class="digest-stat-value green">${d.completedTodayCount}</div>
         <div class="digest-stat-label">Done</div>
       </div>
       <div class="digest-stat">
-        <div class="digest-stat-value pink">${d.pendingCount}</div>
-        <div class="digest-stat-label">Pending</div>
+        <div class="digest-stat-value pink">${d.openCount}</div>
+        <div class="digest-stat-label">Open</div>
       </div>
       <div class="digest-stat">
         <div class="digest-stat-value yellow">+${d.xpToday}</div>
         <div class="digest-stat-label">XP Today</div>
       </div>
       <div class="digest-stat">
-        <div class="digest-stat-value ${streakColor}">${d.totalStreaks}</div>
-        <div class="digest-stat-label">Streaks</div>
+        <div class="digest-stat-value red">${d.overdueCount}</div>
+        <div class="digest-stat-label">Overdue</div>
       </div>
     </div>
 
     <div class="digest-section-title">
-      ✅ Completed
-      <span class="count-badge" style="background:var(--green)">${d.checkedCount}</span>
+      🔴 Due Today
+      <span class="count-badge" style="background:var(--red);color:var(--bg-raise)">${d.dueTodayCount}</span>
     </div>
-    ${d.checkedCount > 0 ? `<div class="digest-list">${checkedItems}</div>` : '<div class="digest-empty">Nothing checked in yet today</div>'}
+    ${d.dueTodayCount > 0 ? `<div class="digest-list">${dueItems}</div>` : '<div class="digest-empty">Nothing due today 🎉</div>'}
 
     <div class="digest-section-title">
-      ⏳ Pending
-      <span class="count-badge" style="background:var(--red);color:var(--bg-raise)">${d.pendingCount}</span>
+      ⚠️ Overdue
+      <span class="count-badge" style="background:var(--red);color:var(--bg-raise)">${d.overdueCount}</span>
     </div>
-    ${d.pendingCount > 0 ? `<div class="digest-list">${pendingItems}</div>` : '<div class="digest-empty" style="border-color:var(--green)">🎉 All done! Great work today!</div>'}
+    ${d.overdueCount > 0 ? `<div class="digest-list">${overdueItems}</div>` : '<div class="digest-empty">No overdue tasks</div>'}
 
-    ${d.bestStreak > 0 ? `
-    <div style="margin-top:12px;padding:12px;background:var(--bg);border:var(--border-w) solid var(--border);border-radius:var(--radius);text-align:center">
-      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Best Streak</span>
-      <div style="font-size:22px;font-weight:700;color:var(--orange);margin-top:2px">🔥 ${d.bestStreak}d</div>
-      <div style="font-size:13px;font-weight:700;color:var(--muted)">${escHtml(d.bestStreakName)}</div>
+    <div class="digest-section-title">
+      ✅ Completed Today
+      <span class="count-badge" style="background:var(--green)">${d.completedTodayCount}</span>
     </div>
-    ` : ''}
+    ${d.completedTodayCount > 0 ? `<div class="digest-list">${doneItems}</div>` : '<div class="digest-empty">Nothing completed yet today</div>'}
   `
 }
 
 // --- Stats ---
 function openStatsModal() {
   statsModal.classList.remove('hidden')
-    statsGrid.innerHTML = '<div class="skel-stats"><div class="skel skel-stat"></div><div class="skel skel-stat"></div><div class="skel skel-stat"></div><div class="skel skel-stat"></div></div>'
+  statsGrid.innerHTML = '<div class="skel-stats"><div class="skel skel-stat"></div><div class="skel skel-stat"></div><div class="skel skel-stat"></div><div class="skel skel-stat"></div></div>'
   loadStats()
 }
 
@@ -1059,24 +726,24 @@ async function loadStats() {
 function renderStats(d) {
   return `
     <div class="stat-card">
-      <span class="stat-label">Total Habits</span>
-      <span class="stat-value">${d.totalHabits}</span>
-      <span class="stat-sub">${d.totalHabits} total</span>
+      <span class="stat-label">Total Tasks</span>
+      <span class="stat-value">${d.totalTodos}</span>
+      <span class="stat-sub">${d.activeTodos} open</span>
     </div>
     <div class="stat-card">
       <span class="stat-label">Total XP</span>
       <span class="stat-value green">${d.totalXP}</span>
-      <span class="stat-sub">~${d.weekXp} XP this week</span>
+      <span class="stat-sub">+${d.weekXP} XP this week</span>
     </div>
     <div class="stat-card">
-      <span class="stat-label">Best Streak</span>
-      <span class="stat-value yellow">${d.bestStreak}d</span>
-      <span class="stat-sub">${escHtml(d.bestStreakName || '—')}</span>
+      <span class="stat-label">Completed</span>
+      <span class="stat-value green">${d.completedTodos}</span>
+      <span class="stat-sub">${d.completionRate}% done</span>
     </div>
     <div class="stat-card">
-      <span class="stat-label">Weekly Completion</span>
-      <span class="stat-value ${d.completionRate >= 70 ? 'green' : d.completionRate >= 40 ? 'yellow' : ''}">${d.completionRate}%</span>
-      <span class="stat-sub">${d.weekCheckins} / ${d.weekTotalDays} check-ins</span>
+      <span class="stat-label">Overdue</span>
+      <span class="stat-value ${d.overdueCount > 0 ? 'red' : 'green'}">${d.overdueCount}</span>
+      <span class="stat-sub">${d.dueTodayCount} due today</span>
     </div>
     <div class="stat-card span-2">
       <span class="stat-label">This Week</span>
@@ -1084,47 +751,47 @@ function renderStats(d) {
         ${d.weekDates.map((date, i) => {
           const max = Math.max(...d.weekDailyCounts, 1)
           const height = Math.max(4, Math.round((d.weekDailyCounts[i] / max) * 100))
-          return `<div class="stat-bar-wrap"><div class="stat-bar" style="height:${height}%"></div><span class="stat-bar-label">${d.weekDates[i].slice(5)}</span></div>`
+          return `<div class="stat-bar-wrap"><div class="stat-bar" style="height:${height}%"></div><span class="stat-bar-label">${date.slice(5)}</span></div>`
         }).join('')}
       </div>
     </div>
     <div class="stat-card span-2">
-      <span class="stat-label">Habits</span>
-      <span class="stat-sub" style="margin-top:8px;display:block">Create habits and check in daily to build streaks!</span>
+      <span class="stat-label">XP</span>
+      <span class="stat-sub" style="margin-top:8px;display:block">Complete tasks to earn XP — HIGH +25, MED +15, LOW +10. 100 XP per level!</span>
     </div>
   `
 }
 
-// --- Add Habit ---
-async function addHabit() {
-  const name = habitInput.value.trim()
-  if (!name) { habitInput.focus(); showToast('Enter a habit name', 'error'); return }
+// --- Add Task ---
+async function addTodo() {
+  const name = todoInput.value.trim()
+  if (!name) { todoInput.focus(); showToast('Enter a task name', 'error'); return }
 
   const emoji = document.querySelector('.emoji-option.selected')?.dataset.emoji || '✅'
-  const colors = ['#FF3366', '#00FF88', '#00D4FF', '#FFD700', '#FF6B35', '#9933FF']
-  const color = colors[Math.floor(Math.random() * colors.length)]
+  const priority = prioritySelect.value || 'medium'
+  const dueDate = dueDateInput.value || null
 
   const tempId = 'temp-' + Date.now()
-  habits.push({
-    id: tempId, name, emoji, color,
-    streak: 0, checkedToday: false, dates: [],
-    timerRunning: null, timerTotal: 0, noteToday: null,
+  todos.push({
+    id: tempId, name, emoji, priority, dueDate,
+    completed: false, completedAt: null, xpEarned: 0,
     created_at: new Date().toISOString()
   })
-  habitInput.value = ''; habitInput.focus()
+  todoInput.value = ''
+  todoInput.focus()
   render()
   showToast(`Added "${name}"`)
 
   try {
-    const data = await Storage.addHabit(name, emoji, color)
-    const idx = habits.findIndex(h => h.id === tempId)
+    const data = await Storage.addTodo(name, emoji, priority, dueDate)
+    const idx = todos.findIndex(t => t.id === tempId)
     if (idx !== -1) {
-      habits[idx] = { ...data, dates: [], timerRunning: null, timerTotal: 0, noteToday: null }
+      todos[idx] = { ...todos[idx], ...data }
       render()
     }
   } catch (err) {
-    const idx = habits.findIndex(h => h.id === tempId)
-    if (idx !== -1) { habits.splice(idx, 1); render() }
+    const idx = todos.findIndex(t => t.id === tempId)
+    if (idx !== -1) { todos.splice(idx, 1); render() }
     showToast(err.message, 'error')
   }
 }
@@ -1142,17 +809,16 @@ function initEmojiPicker() {
 
 // --- Keyboard ---
 function initKeyboard() {
-  habitInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); addHabit() }
+  todoInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addTodo() }
   })
   document.addEventListener('keydown', (e) => {
-    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.target.matches('input, textarea')) {
-      e.preventDefault(); habitInput.focus()
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.target.matches('input, textarea, select')) {
+      e.preventDefault(); todoInput.focus()
     }
     if (e.key === 'Escape') {
       if (!digestModal.classList.contains('hidden')) closeDigestModal()
       if (!statsModal.classList.contains('hidden')) closeStatsModal()
-      if (!noteModal.classList.contains('hidden')) closeNoteModal()
       if (!notifModal.classList.contains('hidden')) closeNotifModal()
       // Close owner login modal on Escape
       const loginOverlay = document.getElementById('ownerLoginOverlay')
@@ -1240,9 +906,9 @@ function startReminderCheck() {
     const now = new Date()
     const current = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     if (current === notifReminderTime) {
-      const unchecked = habits.filter(h => !h.checkedToday)
-      if (unchecked.length > 0) {
-        showBrowserNotification('⏰ Habby Reminder', `${unchecked.length} habit${unchecked.length > 1 ? 's' : ''} to check in today!`)
+      const open = todos.filter(t => !t.completed)
+      if (open.length > 0) {
+        showBrowserNotification('⏰ Habby Reminder', `You have ${open.length} open task${open.length > 1 ? 's' : ''}!`)
       }
     }
   }, 30000)
@@ -1295,29 +961,31 @@ async function registerSw() {
 }
 
 // ============================================
-// LOAD HABITS
+// LOAD TODOS
 // ============================================
 
-async function loadHabits() {
-  habitsList.innerHTML = Array(3).fill(
+async function loadTodos() {
+  todosList.innerHTML = Array(3).fill(
     '<div class="skel-card"><span class="skel skel-dot"></span><span class="skel skel-grow"><span class="skel skel-line short"></span><span class="skel skel-line tiny"></span></span></div>'
   ).join('')
 
   try {
-    const data = await Storage.getHabits()
-    habits = (data.habits || []).map(h => ({
-      ...h,
-      streak: h.streak || calculateStreak(h.dates || [], today()),
-      timerRunning: h.timerRunning || null,
-      timerTotal: h.timerTotal || 0,
-      noteToday: h.noteToday || null
+    const data = await Storage.getTodos()
+    todos = (data.todos || []).map(t => ({
+      id: t.id,
+      name: t.name,
+      emoji: t.emoji || '✅',
+      priority: t.priority || 'medium',
+      dueDate: t.dueDate || null,
+      completed: !!t.completed,
+      completedAt: t.completedAt || null,
+      xpEarned: t.xpEarned || 0,
+      created_at: t.created_at || new Date().toISOString()
     }))
     if (data.xp) renderXp(data.xp)
-    Object.keys(timerIntervals).forEach(k => stopTimerInterval(k))
-    habits.forEach(h => { if (h.timerRunning) startTimerInterval(h.id) })
   } catch (err) {
-    showToast('Failed to load habits', 'error')
-    habits = []
+    showToast('Failed to load tasks', 'error')
+    todos = []
   }
 
   render()
@@ -1410,7 +1078,7 @@ function openOwnerLoginModal() {
       localStorage.setItem('habby-password', password)
       overlay.remove()
       showToast('🔓 Owner mode — loading server data')
-      loadHabits()
+      loadTodos()
       loadNotifSettings()
     } catch (err) {
       ownerError.classList.remove('hidden')
@@ -1439,12 +1107,11 @@ function clearGuestData() {
 function doLogout() {
   accessPassword = ''
   localStorage.removeItem('habby-password')
-  Object.keys(timerIntervals).forEach(k => stopTimerInterval(k))
   if (reminderInterval) { clearInterval(reminderInterval); reminderInterval = null }
-  habits = []
+  todos = []
   xpState = { level: 1, xp: 0, current: 0, needed: 100, progress: 0 }
   showToast('🔒 Back to local mode')
-  loadHabits()
+  loadTodos()
   loadNotifSettings()
 }
 
@@ -1456,12 +1123,16 @@ function initApp() {
   initEmojiPicker()
   initKeyboard()
 
-  // Add habit button
-  addBtn.addEventListener('click', addHabit)
+  // Add todo button
+  addBtn.addEventListener('click', addTodo)
 
-  // Empty state CTA — jump to the habit input
-  const emptyCta = document.getElementById('emptyCta')
-  if (emptyCta) emptyCta.addEventListener('click', () => habitInput.focus())
+  // Filter tabs
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => setFilter(tab.dataset.filter))
+  })
+
+  // Empty state CTA — jump to the task input
+  emptyCta.addEventListener('click', () => todoInput.focus())
 
   // Digest modal
   digestBtn.addEventListener('click', openDigestModal)
@@ -1472,12 +1143,6 @@ function initApp() {
   statsBtn.addEventListener('click', openStatsModal)
   statsModalClose.addEventListener('click', closeStatsModal)
   statsModal.addEventListener('click', (e) => { if (e.target === statsModal) closeStatsModal() })
-
-  // Note modal
-  noteSaveBtn.addEventListener('click', saveNote)
-  noteDeleteBtn.addEventListener('click', deleteNote)
-  noteModalClose.addEventListener('click', closeNoteModal)
-  noteModal.addEventListener('click', (e) => { if (e.target === noteModal) closeNoteModal() })
 
   // Logout
   const logoutBtn = document.getElementById('logoutBtn')
@@ -1506,7 +1171,7 @@ function initApp() {
   registerSw()
   applyTheme(currentTheme)
   loadNotifSettings()
-  loadHabits()
+  loadTodos()
 }
 
 function init() {

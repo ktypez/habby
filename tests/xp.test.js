@@ -1,23 +1,18 @@
 import { describe, it, expect } from 'vitest'
-import { calcXpForCheckin, calcLevel, calcXpForLevel, calcXpProgress } from '../lib/logic.js'
+import { calcXpForTask, calcLevel, calcXpForLevel, calcXpProgress, PRIORITY_XP } from '../lib/logic.js'
 
-describe('calcXpForCheckin', () => {
-  it('returns 10 for 0 streak', () => {
-    expect(calcXpForCheckin(0)).toBe(10)
+describe('calcXpForTask', () => {
+  it('awards XP by priority', () => {
+    expect(PRIORITY_XP).toEqual({ high: 25, medium: 15, low: 10 })
+    expect(calcXpForTask('high')).toBe(25)
+    expect(calcXpForTask('medium')).toBe(15)
+    expect(calcXpForTask('low')).toBe(10)
   })
 
-  it('returns 10 for streak 0', () => {
-    expect(calcXpForCheckin(0)).toBe(10)
-  })
-
-  it('caps at 40 (10 + 30)', () => {
-    expect(calcXpForCheckin(50)).toBe(40)
-  })
-
-  it('scales linearly up to cap', () => {
-    expect(calcXpForCheckin(1)).toBe(11)
-    expect(calcXpForCheckin(10)).toBe(20)
-    expect(calcXpForCheckin(30)).toBe(40)
+  it('defaults to 10 for unknown priority', () => {
+    expect(calcXpForTask('urgent')).toBe(10)
+    expect(calcXpForTask(undefined)).toBe(10)
+    expect(calcXpForTask(null)).toBe(10)
   })
 })
 
