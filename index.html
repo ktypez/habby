@@ -6,6 +6,10 @@
     <title>HABBY — Todos & XP</title>
     <meta name="description" content="Crush your tasks, level up." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AF%3C/text%3E%3C/svg%3E" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Habby" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="HABBY — Todos & XP" />
     <meta property="og:description" content="Crush your tasks, level up." />
@@ -30,12 +34,15 @@
             <span class="header-title">HABBY</span>
           </div>
           <div class="header-actions">
+            <span class="streak-badge" id="streakBadge" title="Day streak">🔥 0</span>
+            <button class="btn-header-icon" id="achievementsBtn" title="Achievements">🏅</button>
             <button class="btn-header-icon" id="themeBtn" title="Theme picker">🎨</button>
             <button class="btn-header-icon" id="digestBtn" title="Daily Digest">📋</button>
             <button class="btn-header-icon" id="statsBtn" title="Statistics">📊</button>
             <button class="btn-header-icon" id="notifBtn" title="Notification settings">🔔</button>
             <button class="btn-header-icon" id="logoutBtn" title="Lock app">🚪</button>
             <span class="stat-badge" id="openBadge">📌 0</span>
+            <span class="offline-badge hidden" id="offlineBadge" title="Pending offline changes">📡 0 queued</span>
           </div>
         </div>
         <!-- XP Bar -->
@@ -49,6 +56,13 @@
           </div>
         </div>
       </header>
+
+      <!-- BACKUP NUDGE (guest mode only) -->
+      <div class="backup-nudge hidden" id="backupNudge">
+        <span>🔒 Local mode — data lives in this browser. Keep a backup.</span>
+        <button class="backup-nudge-btn" id="backupNudgeBtn">⬇ EXPORT</button>
+        <button class="backup-nudge-x" id="backupNudgeClose" title="Dismiss">✕</button>
+      </div>
 
       <main class="main" role="main">
         <!-- ADD TASK FORM -->
@@ -93,6 +107,15 @@
                   <span class="option-label">DUE DATE</span>
                   <input type="date" id="dueDateInput" class="date-input" />
                 </label>
+                <label class="option-field">
+                  <span class="option-label">REPEAT</span>
+                  <select id="repeatSelect" class="priority-select">
+                    <option value="none" selected>—</option>
+                    <option value="daily">🔁 DAILY</option>
+                    <option value="weekly">🔁 WEEKLY</option>
+                    <option value="monthly">🔁 MONTHLY</option>
+                  </select>
+                </label>
               </div>
             </div>
           </div>
@@ -101,8 +124,18 @@
         <!-- TASKS -->
         <section class="todos-section">
           <div class="section-head">
-            <h2 class="section-title" id="listTitle">ALL TASKS</h2>
-            <span class="section-sub" id="todosCount">0 tasks</span>
+            <div class="section-head-left">
+              <h2 class="section-title" id="listTitle">ALL TASKS</h2>
+              <span class="section-sub" id="todosCount">0 tasks</span>
+            </div>
+            <div class="section-head-tools">
+              <input type="search" id="searchInput" class="search-input" placeholder="Search tasks…" autocomplete="off" />
+              <select id="sortSelect" class="sort-select" title="Sort order">
+                <option value="priority" selected>PRIORITY</option>
+                <option value="due">BY DUE DATE</option>
+                <option value="newest">NEWEST</option>
+              </select>
+            </div>
           </div>
 
           <div class="filter-tabs" id="filterTabs">
@@ -123,6 +156,21 @@
           </div>
         </section>
       </main>
+
+      <!-- CONFIRM DELETE MODAL -->
+      <div class="modal-overlay hidden" id="confirmDeleteModal">
+        <div class="modal-card modal-card-sm">
+          <div class="modal-header">
+            <span class="modal-title">🗑 Delete task?</span>
+            <button class="modal-close" id="confirmDeleteClose">✕</button>
+          </div>
+          <p class="confirm-text">“<span id="confirmDeleteName"></span>” will be gone for good.</p>
+          <div class="modal-actions">
+            <button class="btn-modal" id="confirmCancel">CANCEL</button>
+            <button class="btn-modal secondary" id="confirmDelete">DELETE</button>
+          </div>
+        </div>
+      </div>
 
       <!-- DIGEST MODAL -->
       <div class="modal-overlay hidden" id="digestModal">
