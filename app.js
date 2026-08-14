@@ -4,7 +4,6 @@ import { Redis } from 'ioredis'
 import { existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { createHash } from 'crypto'
 import {
   PRIORITIES,
   REPEAT_OPTIONS,
@@ -33,79 +32,9 @@ redis.on('error', (err) => {
   console.error('Redis connection error:', err.message)
 })
 
-function sha256(str) {
-  return createHash('sha256').update(str).digest('hex')
-}
-
-// ⚠️ Security: never hardcode a usable default password.
-// If APP_PASSWORD env is set AND Redis has no password yet, use it.
-// Otherwise owner mode stays locked until the operator sets the key.
-const DEFAULT_PASSWORD = process.env.APP_PASSWORD || null
-
-async function initPassword() {
-  try {
-    const exists = await redis.exists('app:password')
-    if (exists) return
-    if (DEFAULT_PASSWORD) {
-      await redis.set('app:password', sha256(DEFAULT_PASSWORD))
-      console.log('🔐 Initial password set from APP_PASSWORD env')
-    } else {
-      console.warn('⚠️ No app:password in Redis and no APP_PASSWORD env set — owner mode UNAVAILABLE. Set APP_PASSWORD and restart, or set the key manually.')
-    }
-  } catch (err) {
-    console.error('initPassword failed:', err.message)
-  }
-}
-initPassword()
-
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
-
-// --- Auth middleware ---
-app.use('/api', async (req, res, next) => {
-  // Skip auth check for the auth endpoint itself
-  if (req.path === '/auth') return next()
-
-  const sentPassword = req.headers['x-access-password']
-  if (!sentPassword) {
-    return res.status(401).json({ error: 'Access password required' })
-  }
-
-  try {
-    const storedHash = await redis.get('app:password')
-    if (!storedHash) {
-      return res.status(503).json({ error: 'Owner mode not configured' })
-    }
-    const sentHash = sha256(sentPassword)
-    if (sentHash !== storedHash) {
-      return res.status(401).json({ error: 'Invalid password' })
-    }
-    next()
-  } catch (err) {
-    return res.status(500).json({ error: 'Auth check failed' })
-  }
-})
-
-// --- Auth endpoint ---
-app.post('/api/auth', async (req, res) => {
-  try {
-    const { password } = req.body
-    if (!password) return res.status(400).json({ error: 'Password required' })
-
-    const storedHash = await redis.get('app:password')
-    if (!storedHash) {
-      return res.status(503).json({ error: 'Owner mode not configured' })
-    }
-    const sentHash = sha256(password)
-    if (sentHash !== storedHash) {
-      return res.status(401).json({ error: 'Invalid password' })
-    }
-    res.json({ success: true })
-  } catch (err) {
-    res.status(500).json({ error: 'Auth failed' })
-  }
-})
 
 // --- Helpers ---
 function randomId() {
@@ -118,7 +47,6 @@ async function buildTodo(id) {
   return {
     id,
     name: data.name,
-    emoji: data.emoji || '✅',
     priority: data.priority || 'medium',
     dueDate: data.dueDate || null,
     completed: data.completed === 'true',
@@ -157,8 +85,6 @@ const STREAK_SCAN_DAYS = 400
 async function completionCountsByDay() {
   const pipe = redis.pipeline()
   const keys = []
-  // UTC-based days — completed: keys are written with todayStr() (UTC).
-  // Local-midnight arithmetic would shift the scan by the TZ offset (UTC+7 → off by one).
   const now = new Date()
   const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   for (let i = 0; i < STREAK_SCAN_DAYS; i++) {
@@ -210,13 +136,13 @@ async function persistUnlocks(ids) {
   await redis.sadd('achievements:unlocked', ...ids)
 }
 
-// --- Weekly goal (completions in rolling 7 days) ---
+// --- Weekly goal ---
 async function getWeekDone() {
   const days = await completionCountsByDay()
   return days.slice(0, 7).reduce((sum, d) => sum + d.count, 0)
 }
 
-// --- Perfect day check: after completing `justCompletedId`, no open todo is due <= today ---
+// --- Perfect day check ---
 async function isPerfectDay(justCompletedId) {
   const ids = await redis.zrevrange('todos:all', 0, -1)
   const today = todayStr()
@@ -238,7 +164,6 @@ app.get('/api/todos', async (req, res) => {
 
     const results = await Promise.all(ids.map(id => buildTodo(id)))
     const todos = results.filter(Boolean)
-
     res.json({ todos, xp: await buildXp() })
   } catch (err) {
     console.error('GET /api/todos error:', err)
@@ -249,7 +174,7 @@ app.get('/api/todos', async (req, res) => {
 // POST /api/todos
 app.post('/api/todos', async (req, res) => {
   try {
-    const { name, emoji, priority, dueDate, notes, repeat } = req.body
+    const { name, priority, dueDate, notes, repeat } = req.body
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Task name is required' })
     }
@@ -267,7 +192,6 @@ app.post('/api/todos', async (req, res) => {
     await redis.pipeline()
       .hset(`todo:${id}`, {
         name: name.trim().slice(0, 120),
-        emoji: emoji || '✅',
         priority: priority || 'medium',
         dueDate: due || '',
         completed: 'false',
@@ -281,7 +205,7 @@ app.post('/api/todos', async (req, res) => {
       .exec()
 
     res.json({
-      id, name: name.trim().slice(0, 120), emoji: emoji || '✅',
+      id, name: name.trim().slice(0, 120),
       priority: priority || 'medium', dueDate: due,
       completed: false, completedAt: null, xpEarned: 0,
       repeat: repeat || 'none', notes: (notes || '').slice(0, 500),
@@ -293,21 +217,20 @@ app.post('/api/todos', async (req, res) => {
   }
 })
 
-// PATCH /api/todos/:id — edit
+// PATCH /api/todos/:id
 app.patch('/api/todos/:id', async (req, res) => {
   try {
     const { id } = req.params
     const todo = await buildTodo(id)
     if (!todo) return res.status(404).json({ error: 'Todo not found' })
 
-    const { name, emoji, priority, dueDate, notes, repeat } = req.body
+    const { name, priority, dueDate, notes, repeat } = req.body
     const fields = {}
 
     if (name !== undefined) {
       if (!name.trim()) return res.status(400).json({ error: 'Task name cannot be empty' })
       fields.name = name.trim().slice(0, 120)
     }
-    if (emoji !== undefined) fields.emoji = emoji || '✅'
     if (priority !== undefined) {
       if (!PRIORITIES.includes(priority)) return res.status(400).json({ error: 'Invalid priority' })
       fields.priority = priority
@@ -342,7 +265,6 @@ app.delete('/api/todos/:id', async (req, res) => {
     const todo = await buildTodo(id)
     if (!todo) return res.status(404).json({ error: 'Todo not found' })
 
-    // Refund XP if the task was completed
     if (todo.completed && todo.xpEarned > 0) {
       await setTotalXp((await getTotalXp()) - todo.xpEarned)
       await setCompletedCount((await getCompletedCount()) - 1)
@@ -361,7 +283,7 @@ app.delete('/api/todos/:id', async (req, res) => {
   }
 })
 
-// POST /api/todos/clear-done — remove all completed (no XP refund — deliberate)
+// POST /api/todos/clear-done
 app.post('/api/todos/clear-done', async (req, res) => {
   try {
     const ids = await redis.zrevrange('todos:all', 0, -1)
@@ -403,7 +325,6 @@ app.post('/api/todos/:id/complete', async (req, res) => {
       .sadd(`completed:${date}`, id)
       .exec()
 
-    // Streak + achievements
     const streak = await updateStreakLongest()
     const weekDone = await getWeekDone()
     const perfectDay = todo.dueDate && todo.dueDate <= date && (await isPerfectDay(id))
@@ -413,7 +334,6 @@ app.post('/api/todos/:id/complete', async (req, res) => {
     )
     if (unlocked.length) await persistUnlocks(unlocked)
 
-    // Recurring: spawn the next instance
     let nextTodo = null
     if (todo.repeat && todo.repeat !== 'none') {
       const nextDue = nextDueDate(todo.dueDate || date, todo.repeat)
@@ -422,7 +342,7 @@ app.post('/api/todos/:id/complete', async (req, res) => {
         const now = new Date().toISOString()
         await redis.pipeline()
           .hset(`todo:${nid}`, {
-            name: todo.name, emoji: todo.emoji, priority: todo.priority,
+            name: todo.name, priority: todo.priority,
             dueDate: nextDue, completed: 'false', completedAt: '', xpEarned: '0',
             repeat: todo.repeat, notes: todo.notes || '', created_at: now
           })
@@ -447,7 +367,7 @@ app.post('/api/todos/:id/complete', async (req, res) => {
   }
 })
 
-// DELETE /api/todos/:id/complete — undo completion
+// DELETE /api/todos/:id/complete — undo
 app.delete('/api/todos/:id/complete', async (req, res) => {
   try {
     const { id } = req.params
@@ -538,7 +458,6 @@ app.post('/api/import', async (req, res) => {
       .map(t => ({
         id: String(t.id || randomId()),
         name: t.name.trim().slice(0, 120),
-        emoji: t.emoji || '✅',
         priority: PRIORITIES.includes(t.priority) ? t.priority : 'medium',
         dueDate: /^\d{4}-\d{2}-\d{2}$/.test(t.dueDate || '') ? t.dueDate : '',
         completed: !!t.completed,
@@ -569,7 +488,6 @@ app.post('/api/import', async (req, res) => {
         if (data.achievements.length) await redis.sadd('achievements:unlocked', ...data.achievements.map(String))
       }
     } else {
-      // merge: only add todos we don't already have
       const existing = new Set(await redis.zrevrange('todos:all', 0, -1))
       const fresh = clean.filter(t => !existing.has(t.id))
       clean = fresh
@@ -579,7 +497,7 @@ app.post('/api/import', async (req, res) => {
     for (const t of clean) {
       await redis.pipeline()
         .hset(`todo:${t.id}`, {
-          name: t.name, emoji: t.emoji, priority: t.priority,
+          name: t.name, priority: t.priority,
           dueDate: t.dueDate, completed: String(t.completed), completedAt: t.completedAt,
           xpEarned: String(t.xpEarned), repeat: t.repeat, notes: t.notes, created_at: t.created_at
         })
@@ -591,7 +509,6 @@ app.post('/api/import', async (req, res) => {
       added++
     }
 
-    // Recompute longest streak from imported data
     const importedStreak = await computeCurrentStreak()
     const storedLongest = parseInt(await redis.get('streak:longest') || '0', 10)
     if (importedStreak > storedLongest) await redis.set('streak:longest', String(importedStreak))
@@ -603,52 +520,7 @@ app.post('/api/import', async (req, res) => {
   }
 })
 
-// --- NOTIFICATIONS ---
-
-// GET /api/notifications/settings
-app.get('/api/notifications/settings', async (req, res) => {
-  try {
-    const enabled = await redis.get('notifications:enabled')
-    const time = await redis.get('notifications:time')
-    res.json({
-      enabled: enabled === 'true',
-      time: time || '09:00'
-    })
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to get settings' })
-  }
-})
-
-// PUT /api/notifications/settings
-app.put('/api/notifications/settings', async (req, res) => {
-  try {
-    const { enabled, time } = req.body
-    const pipe = redis.pipeline()
-    if (typeof enabled === 'boolean') pipe.set('notifications:enabled', String(enabled))
-    if (time) pipe.set('notifications:time', time)
-    await pipe.exec()
-    res.json({ success: true, enabled, time })
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save settings' })
-  }
-})
-
-// --- Serve static frontend in production (local only - Vercel handles this in deployment) ---
-const distDir = join(__dirname, 'dist')
-if (existsSync(distDir)) {
-  app.use(express.static(distDir))
-  app.use((req, res, next) => {
-    if (req.method === 'GET' && !req.path.startsWith('/api')) {
-      const index = join(distDir, 'index.html')
-      if (existsSync(index)) res.sendFile(index)
-      else res.status(404).send('Frontend not built. Run `yarn build` first.')
-    } else next()
-  })
-}
-
 // --- STATS ---
-
-// GET /api/stats
 app.get('/api/stats', async (req, res) => {
   try {
     const ids = await redis.zrevrange('todos:all', 0, -1)
@@ -662,8 +534,6 @@ app.get('/api/stats', async (req, res) => {
 
     const now = new Date()
     const today = todayStr()
-    // UTC-based week — completed: keys / completedAt are UTC. Local arithmetic
-    // would shift the labels by TZ offset (UTC+7 → off by one).
     const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
     const weekDates = []
     for (let i = 6; i >= 0; i--) {
@@ -680,7 +550,6 @@ app.get('/api/stats', async (req, res) => {
     let weekXP = 0
     for (const t of completed) {
       if (t.completedAt && t.completedAt >= weekDates[0]) {
-        // completedAt is a full ISO timestamp — match on the date part
         const day = (t.completedAt || '').slice(0, 10)
         const idx = weekDates.indexOf(day)
         if (idx !== -1) {
@@ -716,9 +585,7 @@ app.get('/api/stats', async (req, res) => {
   }
 })
 
-// --- DIGEST (today's summary) ---
-
-// GET /api/digest
+// --- DIGEST ---
 app.get('/api/digest', async (req, res) => {
   try {
     const ids = await redis.zrevrange('todos:all', 0, -1)
@@ -737,9 +604,7 @@ app.get('/api/digest', async (req, res) => {
     const completedToday = todos.filter(t => t.completed && t.completedAt === today)
 
     let xpToday = 0
-    for (const t of completedToday) {
-      xpToday += t.xpEarned || 0
-    }
+    for (const t of completedToday) xpToday += t.xpEarned || 0
 
     const now = new Date()
     const dateStr = now.toLocaleDateString('en', {
@@ -756,14 +621,27 @@ app.get('/api/digest', async (req, res) => {
       completedTodayCount: completedToday.length,
       totalXP,
       xpToday,
-      dueToday: dueToday.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority })),
-      overdue: overdue.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority, dueDate: t.dueDate })),
-      completedToday: completedToday.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority }))
+      dueToday: dueToday.map(t => ({ id: t.id, name: t.name, priority: t.priority })),
+      overdue: overdue.map(t => ({ id: t.id, name: t.name, priority: t.priority, dueDate: t.dueDate })),
+      completedToday: completedToday.map(t => ({ id: t.id, name: t.name, priority: t.priority }))
     })
   } catch (err) {
     console.error('GET /api/digest error:', err)
     res.status(500).json({ error: 'Failed to get digest' })
   }
 })
+
+// --- Serve static frontend ---
+const distDir = join(__dirname, 'dist')
+if (existsSync(distDir)) {
+  app.use(express.static(distDir))
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
+      const index = join(distDir, 'index.html')
+      if (existsSync(index)) res.sendFile(index)
+      else res.status(404).send('Frontend not built. Run `npm run build` first.')
+    } else next()
+  })
+}
 
 export default app

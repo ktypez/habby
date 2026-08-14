@@ -1,7 +1,6 @@
 // ============================================
-// HABBY — Storage adapter
-// Guest: localStorage · Owner: Redis via /api
-// Includes: offline outbox (owner), export/import
+// TASKFLOW — Storage adapter
+// LocalStorage only (no auth backend required)
 // ============================================
 
 import {
@@ -11,33 +10,28 @@ import {
 } from '../lib/logic.js'
 
 const API = '/api'
-let accessPassword = localStorage.getItem('habby-password') || ''
 let onChangeCallback = null
 
-export function setAccessPassword(pw) {
-  accessPassword = pw
-  if (pw) localStorage.setItem('habby-password', pw)
-  else localStorage.removeItem('habby-password')
-}
+export function isOwner() { return false }
 
-export function isOwner() { return !!accessPassword }
+// DEPRECATED: auth removed — all functions are no-ops
+export function setAccessPassword() {}
 export function setOnChange(fn) { onChangeCallback = fn }
-
 function notifyChange() { if (onChangeCallback) onChangeCallback() }
 
 // ============================================
-// GUEST STORAGE
+// GUEST STORAGE (localStorage)
 // ============================================
 
 function guestGet(key) {
   try {
-    const raw = localStorage.getItem('habby:' + key)
+    const raw = localStorage.getItem('taskflow:' + key)
     if (raw === null) return null
     return JSON.parse(raw)
   } catch { return null }
 }
-function guestSet(key, value) { localStorage.setItem('habby:' + key, JSON.stringify(value)) }
-function guestRemove(key) { localStorage.removeItem('habby:' + key) }
+function guestSet(key, value) { localStorage.setItem('taskflow:' + key, JSON.stringify(value)) }
+function guestRemove(key) { localStorage.removeItem('taskflow:' + key) }
 function guestGetTodos() { return guestGet('todos') || [] }
 function guestSaveTodos(list) { guestSet('todos', list) }
 function guestGetXp() { return guestGet('xp') || 0 }
@@ -56,7 +50,7 @@ function guestCompletionDates() {
 }
 
 // ============================================
-// OWNER API + OFFLINE OUTBOX
+// OWNER API (optional — works without backend)
 // ============================================
 
 export class OfflineError extends Error {
@@ -94,8 +88,6 @@ function enqueue(entry) {
 }
 export function pendingCount() { return getOutbox().length }
 
-// --- Flush offline outbox (owner mode) ---
-// Returns { synced: n, dropped: n, resync: bool }
 export async function flushOutbox() {
   const box = getOutbox()
   if (!box.length || !isOwner()) return { synced: 0, dropped: 0, resync: false }
@@ -123,7 +115,6 @@ export async function flushOutbox() {
       }
       synced++
     } catch (err) {
-      // State-mismatch (already done/deleted elsewhere) → drop; network → keep for later
       if (err.status === 400 || err.status === 404) dropped++
       else remaining.push(entry)
     }
@@ -136,9 +127,9 @@ export async function flushOutbox() {
 // STORAGE ADAPTER
 // ============================================
 
-function newGuestTodo(name, emoji, priority, dueDate, notes, repeat) {
+function newGuestTodo(name, priority, dueDate, notes, repeat) {
   return {
-    id: randomId(), name, emoji, priority, dueDate,
+    id: randomId(), name, priority, dueDate,
     completed: false, completedAt: null, xpEarned: 0,
     repeat: repeat || 'none', notes: notes || '',
     completionDates: [],
@@ -149,7 +140,6 @@ function newGuestTodo(name, emoji, priority, dueDate, notes, repeat) {
 export const Storage = {
   isOwner,
 
-  // --- Todos ---
   async getTodos() {
     if (isOwner()) {
       const data = await api('/todos')
@@ -171,23 +161,23 @@ export const Storage = {
   },
 
   async addTodo(task) {
-    const { name, emoji, priority, dueDate, notes, repeat } = task || {}
+    const { name, priority, dueDate, notes, repeat } = task || {}
     if (isOwner()) {
       try {
         return await api('/todos', {
           method: 'POST',
-          body: JSON.stringify({ name, emoji, priority, dueDate, notes, repeat })
+          body: JSON.stringify({ name, priority, dueDate, notes, repeat })
         })
       } catch (err) {
         if (err instanceof OfflineError) {
           const tempId = 'temp-' + Date.now().toString(36)
-          enqueue({ type: 'add', payload: { name, emoji, priority, dueDate, notes, repeat, tempId } })
-          return { ...newGuestTodo(name, emoji, priority, dueDate, notes, repeat), id: tempId, queued: true }
+          enqueue({ type: 'add', payload: { name, priority, dueDate, notes, repeat, tempId } })
+          return { ...newGuestTodo(name, priority, dueDate, notes, repeat), id: tempId, queued: true }
         }
         throw err
       }
     }
-    const todo = newGuestTodo(name, emoji, priority, dueDate, notes, repeat)
+    const todo = newGuestTodo(name, priority, dueDate, notes, repeat)
     const list = guestGetTodos()
     list.push(todo)
     guestSaveTodos(list)
@@ -211,7 +201,6 @@ export const Storage = {
     const todo = list.find(t => t.id === id)
     if (!todo) return null
     if (fields.name !== undefined) todo.name = fields.name.trim().slice(0, 120)
-    if (fields.emoji !== undefined) todo.emoji = fields.emoji
     if (fields.priority !== undefined) todo.priority = fields.priority
     if (fields.dueDate !== undefined) todo.dueDate = fields.dueDate || null
     if (fields.notes !== undefined) todo.notes = String(fields.notes).slice(0, 500)
@@ -260,7 +249,6 @@ export const Storage = {
     guestSetCompletedCount(guestGetCompletedCount() + 1)
     guestSaveTodos(list)
 
-    // Streak + achievements (guest-local)
     const streak = calcStreak(guestCompletionDates())
     const totalCompleted = guestGetCompletedCount()
     const level = Math.floor(guestGetXp() / 100) + 1
@@ -273,10 +261,9 @@ export const Storage = {
     )
     if (unlocked.length) guestSetAchievements([...new Set([...guestGetAchievements(), ...unlocked])])
 
-    // Recurring: spawn next instance
     let nextTodo = null
     if (todo.repeat && todo.repeat !== 'none') {
-      nextTodo = newGuestTodo(todo.name, todo.emoji, todo.priority, nextDueDate(todo.dueDate || date, todo.repeat), todo.notes, todo.repeat)
+      nextTodo = newGuestTodo(todo.name, todo.priority, nextDueDate(todo.dueDate || date, todo.repeat), todo.notes, todo.repeat)
       list.push(nextTodo)
       guestSaveTodos(list)
     }
@@ -336,11 +323,8 @@ export const Storage = {
     return { success: true, removed: list.length - keep.length }
   },
 
-  // --- Stats ---
   async getStats() {
-    if (isOwner()) {
-      return api('/stats')
-    }
+    if (isOwner()) return api('/stats')
     const list = guestGetTodos()
     const totalXP = guestGetXp()
     const now = new Date()
@@ -394,24 +378,19 @@ export const Storage = {
     }
   },
 
-  // --- Streak ---
   async getStreak() {
     if (isOwner()) return api('/streak')
     return calcStreak(guestCompletionDates())
   },
 
-  // --- Achievements ---
   async getAchievements() {
     if (isOwner()) return api('/achievements')
     const unlocked = new Set(guestGetAchievements())
     return { achievements: ACHIEVEMENTS.map(a => ({ ...a, unlocked: unlocked.has(a.id) })) }
   },
 
-  // --- Digest ---
   async getDigest() {
-    if (isOwner()) {
-      return api('/digest')
-    }
+    if (isOwner()) return api('/digest')
     const list = guestGetTodos()
     const totalXP = guestGetXp()
     const todayStrNow = todayStr()
@@ -434,34 +413,14 @@ export const Storage = {
       completedTodayCount: completedToday.length,
       totalXP,
       xpToday,
-      dueToday: dueToday.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority })),
-      overdue: overdue.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority, dueDate: t.dueDate })),
-      completedToday: completedToday.map(t => ({ id: t.id, name: t.name, emoji: t.emoji, priority: t.priority }))
+      dueToday: dueToday.map(t => ({ id: t.id, name: t.name, priority: t.priority })),
+      overdue: overdue.map(t => ({ id: t.id, name: t.name, priority: t.priority, dueDate: t.dueDate })),
+      completedToday: completedToday.map(t => ({ id: t.id, name: t.name, priority: t.priority }))
     }
   },
 
-  // --- Notifications ---
-  async getNotifSettings() {
-    if (isOwner()) return api('/notifications/settings')
-    return {
-      enabled: guestGet('notif:enabled') || false,
-      time: guestGet('notif:time') || '09:00'
-    }
-  },
-
-  async saveNotifSettings(enabled, time) {
-    if (isOwner()) {
-      return api('/notifications/settings', { method: 'PUT', body: JSON.stringify({ enabled, time }) })
-    }
-    guestSet('notif:enabled', enabled)
-    guestSet('notif:time', time)
-  },
-
-  // --- Export / Import ---
   async exportData() {
-    if (isOwner()) {
-      return api('/export')
-    }
+    if (isOwner()) return api('/export')
     return {
       version: 2,
       exportedAt: new Date().toISOString(),
@@ -492,7 +451,6 @@ export const Storage = {
       .map(t => ({
         id: String(t.id || randomId()),
         name: t.name.trim().slice(0, 120),
-        emoji: t.emoji || '✅',
         priority: PRIORITIES.includes(t.priority) ? t.priority : 'medium',
         dueDate: /^\d{4}-\d{2}-\d{2}$/.test(t.dueDate || '') ? t.dueDate : null,
         completed: !!t.completed,
@@ -518,10 +476,6 @@ export const Storage = {
   }
 }
 
-// ============================================
-// HELPERS
-// ============================================
-
 function randomId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }
@@ -530,8 +484,7 @@ export function clearGuestData() {
   const keys = []
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i)
-    if (k && k.startsWith('habby:')) keys.push(k)
+    if (k && k.startsWith('taskflow:')) keys.push(k)
   }
   keys.forEach(k => localStorage.removeItem(k))
 }
-
