@@ -161,7 +161,7 @@ button:active {
 .header-inner {
   max-width: 720px;
   margin: 0 auto;
-  padding: 16px 24px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -236,7 +236,7 @@ button:active {
 .xp-header-inner {
   max-width: 720px;
   margin: 0 auto;
-  padding: 8px 24px;
+  padding: 5px 20px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -279,7 +279,7 @@ button:active {
 /* XP float animation */
 .xp-float {
   position: fixed;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--primary);
   pointer-events: none;
@@ -312,7 +312,7 @@ button:active {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: 48px 56px;
+  padding: 32px 40px;
   text-align: center;
   animation: levelUpPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   max-width: 340px;
@@ -320,24 +320,24 @@ button:active {
 }
 
 .level-up-title {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: 2px;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: var(--primary);
 }
 
 .level-up-sub {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
   font-weight: 600;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .level-up-btn {
   padding: 10px 28px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -378,7 +378,7 @@ button:active {
 .main {
   max-width: 720px;
   margin: 0 auto;
-  padding: 28px 24px 80px;
+  padding: 16px 16px 60px;
 }
 
 /* ═══ ADD TASK ═══ */
@@ -387,8 +387,8 @@ button:active {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
-  padding: 20px;
-  margin-bottom: 28px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
 }
 
 .add-todo-title {
@@ -397,17 +397,17 @@ button:active {
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
-.add-todo-form { display: flex; flex-direction: column; gap: 12px; }
+.add-todo-form { display: flex; flex-direction: column; gap: 8px; }
 
 .add-todo-input-row { display: flex; gap: 8px; }
 
 .todo-input {
   flex: 1;
-  padding: 12px 14px;
-  font-size: 14px;
+  padding: 8px 11px;
+  font-size: 13px;
   font-weight: 600;
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
@@ -422,8 +422,8 @@ button:active {
 }
 
 .btn-add {
-  padding: 12px 22px;
-  font-size: 12px;
+  padding: 8px 16px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -452,17 +452,17 @@ button:active {
 }
 
 .option-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   color: var(--text-muted);
   text-transform: uppercase;
 }
 
 .priority-select,
 .date-input {
-  padding: 9px 12px;
-  font-size: 12px;
+  padding: 6px 9px;
+  font-size: 11px;
   font-weight: 700;
   font-family: inherit;
   border: 1.5px solid var(--border);
@@ -484,8 +484,8 @@ button:active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 .section-title {
   font-size: 11px;
@@ -524,7 +524,7 @@ button:active {
 .sort-select {
   padding: 7px 10px;
   font-family: inherit;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   color: var(--text-secondary);
   background: var(--bg-raised);
@@ -546,10 +546,10 @@ button:active {
 }
 
 .filter-tab {
-  padding: 6px 14px;
-  font-size: 11px;
+  padding: 4px 10px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
   background: var(--bg-raised);
   color: var(--text-muted);
@@ -573,10 +573,10 @@ button:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  font-size: 10px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 9px;
   font-weight: 800;
   border-radius: 99px;
   background: var(--bg-sunken);
@@ -592,7 +592,7 @@ button:active {
 .todos-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .todo-card {
@@ -602,19 +602,19 @@ button:active {
   background: var(--bg-raised);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 8px 11px;
   transition: background var(--transition), border-color var(--transition), box-shadow var(--transition), opacity var(--transition);
-  animation: cardIn 0.25s ease backwards;
+  animation: cardIn 0.15s ease backwards;
   position: relative;
 }
 .todo-card:nth-child(1) { animation-delay: 0ms; }
-.todo-card:nth-child(2) { animation-delay: 30ms; }
-.todo-card:nth-child(3) { animation-delay: 60ms; }
-.todo-card:nth-child(4) { animation-delay: 90ms; }
-.todo-card:nth-child(5) { animation-delay: 120ms; }
-.todo-card:nth-child(6) { animation-delay: 150ms; }
-.todo-card:nth-child(7) { animation-delay: 180ms; }
-.todo-card:nth-child(8) { animation-delay: 210ms; }
+.todo-card:nth-child(2) { animation-delay: 15ms; }
+.todo-card:nth-child(3) { animation-delay: 30ms; }
+.todo-card:nth-child(4) { animation-delay: 45ms; }
+.todo-card:nth-child(5) { animation-delay: 60ms; }
+.todo-card:nth-child(6) { animation-delay: 75ms; }
+.todo-card:nth-child(7) { animation-delay: 90ms; }
+.todo-card:nth-child(8) { animation-delay: 105ms; }
 
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(6px); }
@@ -670,7 +670,7 @@ button:active {
 .todo-info { flex: 1; min-width: 0; }
 
 .todo-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
   word-break: break-word;
@@ -684,19 +684,19 @@ button:active {
 .todo-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 5px;
+  gap: 6px;
+  margin-top: 4px;
   flex-wrap: wrap;
 }
 
 .prio-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   border-radius: var(--radius-sm);
-  padding: 2px 7px;
+  padding: 1px 5px;
   line-height: 1.4;
   text-transform: uppercase;
 }
@@ -707,11 +707,11 @@ button:active {
 .due-chip {
   display: inline-flex;
   align-items: center;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.5px;
   border-radius: var(--radius-sm);
-  padding: 2px 7px;
+  padding: 1px 5px;
   line-height: 1.4;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -723,20 +723,20 @@ button:active {
 .repeat-chip {
   display: inline-flex;
   align-items: center;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.5px;
   background: var(--info);
   color: white;
   border-radius: var(--radius-sm);
-  padding: 2px 7px;
+  padding: 1px 5px;
   text-transform: uppercase;
 }
 
 .xp-chip {
   display: inline-flex;
   align-items: center;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.5px;
   color: var(--primary);
@@ -752,8 +752,8 @@ button:active {
 }
 
 .btn-edit, .btn-delete {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border: none;
@@ -767,8 +767,8 @@ button:active {
 .btn-delete:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 
 .btn-notes {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -785,9 +785,9 @@ button:active {
 .btn-notes.open { background: var(--warning); color: white; border-color: var(--warning); }
 
 .todo-notes {
-  margin-top: 6px;
-  padding: 8px 10px;
-  font-size: 12px;
+  margin-top: 4px;
+  padding: 5px 8px;
+  font-size: 11px;
   line-height: 1.5;
   background: var(--bg-sunken);
   border: 1px dashed var(--border-bold);
@@ -805,7 +805,7 @@ button:active {
 /* ═══ EMPTY STATE ═══ */
 .empty-state {
   text-align: center;
-  padding: 64px 20px;
+  padding: 40px 16px;
   color: var(--text-muted);
 }
 .empty-state.hidden { display: none; }
@@ -828,10 +828,10 @@ button:active {
 .empty-text { font-size: 13px; color: var(--text-muted); max-width: 280px; margin: 0 auto; }
 
 .empty-cta {
-  margin-top: 20px;
-  padding: 10px 24px;
+  margin-top: 14px;
+  padding: 7px 18px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -865,8 +865,8 @@ button:active {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: 24px;
-  width: 420px;
+  padding: 16px;
+  width: 380px;
   max-width: calc(100vw - 32px);
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
@@ -884,8 +884,8 @@ button:active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
-  padding-bottom: 14px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -897,8 +897,8 @@ button:active {
 }
 
 .modal-close {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border: 1.5px solid var(--border);
@@ -926,14 +926,14 @@ button:active {
 
 .modal-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 16px;
+  gap: 6px;
+  margin-top: 12px;
   justify-content: flex-end;
 }
 
 .btn-modal {
-  padding: 9px 18px;
-  font-size: 11px;
+  padding: 6px 14px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -964,7 +964,7 @@ button:active {
 }
 
 .digest-date {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -972,23 +972,23 @@ button:active {
 .digest-stats-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .digest-stat {
   background: var(--bg-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 8px;
+  padding: 8px 6px;
   text-align: center;
 }
 
 .digest-stat-value {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .digest-stat-value.green { color: var(--success); }
 .digest-stat-value.yellow { color: var(--warning); }
@@ -996,17 +996,17 @@ button:active {
 .digest-stat-value.blue { color: var(--primary); }
 
 .digest-stat-label {
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   color: var(--text-muted);
 }
 
 .digest-section-title {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   margin-bottom: 8px;
   color: var(--text-secondary);
@@ -1027,15 +1027,15 @@ button:active {
 .digest-list {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-bottom: 16px;
+  gap: 3px;
+  margin-bottom: 12px;
 }
 
 .digest-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
+  padding: 6px 10px;
   background: var(--bg-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1056,7 +1056,7 @@ button:active {
 }
 
 .digest-item-note {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-muted);
   font-style: italic;
   max-width: 120px;
@@ -1086,7 +1086,7 @@ button:active {
   background: var(--bg-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   transition: box-shadow var(--transition);
@@ -1107,7 +1107,7 @@ button:active {
 }
 
 .stat-value {
-  font-size: 26px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--text);
   line-height: 1;
@@ -1119,7 +1119,7 @@ button:active {
 .stat-value.blue { color: var(--primary); }
 
 .stat-sub {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -1129,7 +1129,7 @@ button:active {
   display: flex;
   align-items: flex-end;
   gap: 5px;
-  height: 56px;
+  height: 36px;
   margin-top: 8px;
   padding-top: 4px;
 }
@@ -1253,14 +1253,14 @@ button:active {
 }
 .achievements-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 8px;
 }
 .achievement-card {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 7px 9px;
   background: var(--bg-raised);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
@@ -1268,7 +1268,7 @@ button:active {
 }
 .achievement-card:hover { box-shadow: var(--shadow-sm); }
 .achievement-card.locked { opacity: 0.45; filter: grayscale(1); }
-.achievement-emoji { font-size: 22px; }
+.achievement-emoji { font-size: 18px; }
 .achievement-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .achievement-name { font-size: 12px; font-weight: 800; }
 .achievement-desc { font-size: 10px; color: var(--text-muted); }
@@ -1290,7 +1290,7 @@ button:active {
 /* ═══ TOAST ═══ */
 .toast-container {
   position: fixed;
-  bottom: 20px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 999;
@@ -1301,8 +1301,8 @@ button:active {
 }
 
 .toast {
-  padding: 10px 18px;
-  font-size: 12px;
+  padding: 7px 14px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
   border: 1px solid var(--border);
@@ -1380,21 +1380,21 @@ button:active {
 
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 600px) {
-  .header-inner { padding: 12px 16px; }
+  .header-inner { padding: 8px 12px; }
   .header-title { font-size: 14px; letter-spacing: 2px; }
-  .xp-header-inner { padding: 6px 16px; }
+  .xp-header-inner { padding: 4px 12px; }
   .xp-level-badge { font-size: 9px; padding: 2px 8px; }
   .btn-icon { width: 32px; height: 32px; }
 
-  .main { padding: 16px 16px 60px; }
-  .add-todo-card { padding: 14px; margin-bottom: 20px; }
+  .main { padding: 12px 12px 48px; }
+  .add-todo-card { padding: 10px; margin-bottom: 12px; }
   .add-todo-input-row { flex-direction: column; }
   .btn-add { width: 100%; text-align: center; }
   .add-todo-options { flex-direction: column; }
   .option-field { min-width: 100%; }
 
   .todos-list { gap: 5px; }
-  .todo-card { padding: 10px 12px; gap: 10px; }
+  .todo-card { padding: 7px 9px; gap: 10px; }
   .todo-name { font-size: 13px; }
   .prio-badge, .due-chip, .xp-chip { font-size: 8px; padding: 2px 6px; }
   .filter-tab { padding: 5px 10px; font-size: 10px; }
@@ -1407,8 +1407,8 @@ button:active {
   .stats-grid { grid-template-columns: 1fr; }
   .stat-card.span-2 { grid-column: span 1; }
   .skel-stats { grid-template-columns: 1fr; }
-  .stat-value { font-size: 22px; }
-  .stat-bars { height: 44px; }
+  .stat-value { font-size: 18px; }
+  .stat-bars { height: 36px; }
   .digest-stats-row { grid-template-columns: repeat(2, 1fr); }
   .achievements-grid { grid-template-columns: 1fr; }
 
@@ -1420,7 +1420,7 @@ button:active {
   .main { max-width: none; }
 }
 @media (min-width: 1024px) {
-  .main { padding: 32px 32px 80px; }
+  .main { padding: 20px 20px 60px; }
 }
 @media (min-width: 1440px) {
   .main { max-width: 780px; margin: 0 auto; }
