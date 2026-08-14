@@ -16,6 +16,11 @@ import {
 let todos = []
 let xpState = { level: 1, xp: 0, current: 0, needed: 100, progress: 0 }
 let streakState = { current: 0, longest: 0 }
+// Warn before navigating away with unsaved input
+window.addEventListener('beforeunload', e => {
+  const val = document.getElementById('todoInput')?.value.trim()
+  if (val) { e.preventDefault(); e.returnValue = '' }
+})
 let currentFilter = 'all'
 let currentSort = 'priority'
 let searchQuery = ''

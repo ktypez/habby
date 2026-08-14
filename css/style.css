@@ -78,6 +78,7 @@ body {
   overflow-x: hidden;
   background: var(--bg);
   transition: background var(--transition), color var(--transition);
+  touch-action: manipulation;
 }
 
 a {
@@ -107,6 +108,22 @@ h1, h2, h3, h4 {
 }
 
 /* ═══ FOCUS ═══ */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--primary);
+  color: white;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  z-index: 9999;
+  text-decoration: none;
+}
+.skip-link:focus {
+  left: 0;
+  top: 0;
+}
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
@@ -118,6 +135,18 @@ button:active {
 }
 
 .hidden { display: none !important; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* ═══ HEADER ═══ */
 .header {
@@ -188,7 +217,7 @@ button:active {
   border-radius: var(--radius-sm);
   background: var(--bg-raised);
   color: var(--text-secondary);
-  transition: all var(--transition);
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
 }
 .btn-icon:hover {
   background: var(--bg-hover);
@@ -316,7 +345,7 @@ button:active {
   color: white;
   border: none;
   border-radius: var(--radius-sm);
-  transition: all var(--transition);
+  transition: background var(--transition), transform var(--transition);
 }
 .level-up-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
 
@@ -384,11 +413,10 @@ button:active {
   border-radius: var(--radius);
   background: var(--bg);
   color: var(--text);
-  outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 .todo-input::placeholder { color: var(--text-muted); font-weight: 400; }
-.todo-input:focus {
+.todo-input:focus-visible {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
 }
@@ -403,7 +431,7 @@ button:active {
   color: var(--bg);
   border: none;
   border-radius: var(--radius);
-  transition: all var(--transition);
+  transition: background var(--transition), color var(--transition), transform var(--transition), box-shadow var(--transition);
   white-space: nowrap;
 }
 .btn-add:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-md); }
@@ -441,13 +469,12 @@ button:active {
   border-radius: var(--radius);
   background: var(--bg);
   color: var(--text);
-  outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);
   appearance: none;
   cursor: pointer;
 }
-.priority-select:focus,
-.date-input:focus {
+.priority-select:focus-visible,
+.date-input:focus-visible {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
 }
@@ -488,10 +515,9 @@ button:active {
   background: var(--bg-raised);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);
 }
-.search-input:focus {
+.search-input:focus-visible {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
 }
@@ -505,12 +531,11 @@ button:active {
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
-  outline: none;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   transition: border-color var(--transition);
 }
-.sort-select:focus { border-color: var(--primary); }
+.sort-select:focus-visible { border-color: var(--primary); }
 
 /* ═══ FILTER TABS ═══ */
 .filter-tabs {
@@ -530,7 +555,7 @@ button:active {
   color: var(--text-muted);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  transition: all var(--transition);
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
   line-height: 1;
 }
 .filter-tab:hover {
@@ -578,7 +603,7 @@ button:active {
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 14px;
-  transition: all var(--transition);
+  transition: background var(--transition), border-color var(--transition), box-shadow var(--transition), opacity var(--transition);
   animation: cardIn 0.25s ease backwards;
   position: relative;
 }
@@ -620,7 +645,7 @@ button:active {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  transition: all var(--transition);
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
   background: transparent;
   padding: 0;
 }
@@ -735,7 +760,7 @@ button:active {
   background: transparent;
   color: var(--text-muted);
   border-radius: var(--radius-sm);
-  transition: all var(--transition);
+  transition: background var(--transition), color var(--transition);
   padding: 0;
 }
 .btn-edit:hover { background: var(--bg-hover); color: var(--text); }
@@ -753,7 +778,7 @@ button:active {
   color: var(--text-muted);
   font-size: 11px;
   cursor: pointer;
-  transition: all var(--transition);
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
   line-height: 1;
 }
 .btn-notes:hover { border-color: var(--border-bold); color: var(--text); }
@@ -815,7 +840,7 @@ button:active {
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: all var(--transition);
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
 }
 .empty-cta:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
 .empty-cta:active { transform: scale(0.97); }
@@ -832,6 +857,7 @@ button:active {
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   animation: fadeIn 0.15s ease;
+  overscroll-behavior: contain;
 }
 
 .modal-card {
@@ -879,7 +905,7 @@ button:active {
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
-  transition: all var(--transition);
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
   padding: 0;
   line-height: 1;
 }
@@ -913,7 +939,7 @@ button:active {
   text-transform: uppercase;
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  transition: all var(--transition);
+  transition: background var(--transition), border-color var(--transition);
   background: var(--bg-raised);
   color: var(--text);
   line-height: 1;
@@ -1182,7 +1208,6 @@ button:active {
   border-radius: var(--radius);
   background: var(--bg-raised);
   cursor: pointer;
-  transition: all var(--transition);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1212,11 +1237,10 @@ button:active {
   background: var(--bg);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  outline: none;
   resize: vertical;
   transition: border-color var(--transition), box-shadow var(--transition);
 }
-.notes-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent); }
+.notes-input:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent); }
 .edit-delete-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 
 /* ═══ ACHIEVEMENTS ═══ */

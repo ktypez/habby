@@ -150,5 +150,6 @@ export function showLevelUp(level) {
   document.body.appendChild(overlay)
   buzz([30, 40, 60])
   overlay.addEventListener('click', () => overlay.remove())
-  setTimeout(() => { if (overlay.parentNode) overlay.remove() }, 2000)
+  overlay.addEventListener('keydown', e => { if (e.key === 'Escape') overlay.remove() })
+  setTimeout(() => { if (overlay.parentNode) overlay.remove() }, 4000)
 }

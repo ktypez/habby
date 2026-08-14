@@ -128,6 +128,7 @@ export function openThemeModal({ currentTheme, onPick }) {
       ).join('')}</div>` +
     `</div>`
   document.body.appendChild(overlay)
+  trapFocus(overlay)
 
   overlay.querySelectorAll('.theme-opt').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -139,6 +140,7 @@ export function openThemeModal({ currentTheme, onPick }) {
   })
   overlay.querySelector('#themeModalClose').addEventListener('click', () => overlay.remove())
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+  overlay.addEventListener('keydown', e => { if (e.key === 'Escape') overlay.remove() })
 }
 
 // ---------- Achievements ----------
@@ -151,6 +153,7 @@ export function openAchievementsModal() {
       `<div id="achContent"><div class="skel skel-line"></div><div class="skel skel-line short"></div></div>` +
     `</div>`
   document.body.appendChild(overlay)
+  trapFocus(overlay)
 
   const content = overlay.querySelector('#achContent')
   Storage.getAchievements()
@@ -162,6 +165,7 @@ export function openAchievementsModal() {
 
   overlay.querySelector('#achModalClose').addEventListener('click', () => overlay.remove())
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+  overlay.addEventListener('keydown', e => { if (e.key === 'Escape') overlay.remove() })
 }
 
 // ---------- helpers ----------
@@ -206,6 +210,7 @@ export function openEditModal(todo, onSaved) {
       `</div>` +
     `</div>`
   document.body.appendChild(overlay)
+  trapFocus(overlay)
 
   const nameInput = overlay.querySelector('#editNameInput')
   nameInput.focus()
@@ -215,6 +220,7 @@ export function openEditModal(todo, onSaved) {
   overlay.querySelector('#editSaveBtn').addEventListener('click', save)
   overlay.querySelector('#editModalClose').addEventListener('click', () => overlay.remove())
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+  overlay.addEventListener('keydown', e => { if (e.key === 'Escape') overlay.remove() })
 
   async function save() {
     const name = nameInput.value.trim()
@@ -283,6 +289,7 @@ export function openImportModal({ onDone }) {
       `</div>` +
     `</div>`
   document.body.appendChild(overlay)
+  trapFocus(overlay)
 
   const fileInput = overlay.querySelector('#importFile')
   const goBtn = overlay.querySelector('#importGoBtn')
@@ -314,6 +321,7 @@ export function openImportModal({ onDone }) {
 
   overlay.querySelector('#importClose').addEventListener('click', () => overlay.remove())
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+  overlay.addEventListener('keydown', e => { if (e.key === 'Escape') overlay.remove() })
 }
 
 function showModalError(overlay, msg) {
@@ -325,3 +333,21 @@ function showModalError(overlay, msg) {
   }
   el.textContent = msg
 }
+
+// ---------- Focus trap helper ----------
+function trapFocus(overlay) {
+  const focusable = overlay.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  overlay.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus() }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+  })
+  requestAnimationFrame(() => { first?.focus() })
+}
+
+
