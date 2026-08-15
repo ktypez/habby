@@ -411,7 +411,7 @@ function wireEvents() {
     if (!raw) return
     const parsed = parseDueDate(raw)
     const name = parsed.name
-    const due = parsed.date || dueDateInput.value || null
+    const due = parsed.date || null
     addTodo(name, 'medium', due, null, '')
       .then(res => {
         if (parsed.date) showToast(`Due ${parsed.label}`, 'success', 2000)
