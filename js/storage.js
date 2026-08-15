@@ -62,7 +62,6 @@ export class OfflineError extends Error {
 
 async function api(path, options = {}) {
   const headers = { 'Content-Type': 'application/json' }
-  if (accessPassword) headers['x-access-password'] = accessPassword
   let res
   try {
     res = await fetch(`${API}${path}`, { headers, ...options })
@@ -280,12 +279,10 @@ export const Storage = {
 
   guestWeekDone() {
     const dates = guestCompletionDates()
-    const today = new Date()
-    const cutoff = new Date(today)
-    cutoff.setDate(cutoff.getDate() - 6)
-    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    const today = todayStr()
+    const cutoff = new Date(Date.UTC(...today.split('-').map(Number)) - 6 * 86400000).toISOString().slice(0, 10)
     let count = 0
-    for (const d of dates) if (d >= cutoffStr) count++
+    for (const d of dates) if (d >= cutoff) count++
     return count
   },
 
