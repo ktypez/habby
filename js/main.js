@@ -41,9 +41,6 @@ const countToday = $('#countToday')
 const countDone = $('#countDone')
 const todoInput = $('#todoInput')
 const addBtn = $('#addTodoBtn')
-const prioritySelect = $('#prioritySelect')
-const dueDateInput = $('#dueDateInput')
-const repeatSelect = $('#repeatSelect')
 const searchInput = $('#searchInput')
 const sortSelect = $('#sortSelect')
 const toastContainer = $('#toastContainer')
@@ -415,15 +412,12 @@ function wireEvents() {
     const parsed = parseDueDate(raw)
     const name = parsed.name
     const due = parsed.date || dueDateInput.value || null
-    addTodo(name, prioritySelect.value, due, repeatSelect.value, '')
+    addTodo(name, 'medium', due, null, '')
       .then(res => {
         if (parsed.date) showToast(`Due ${parsed.label}`, 'success', 2000)
       })
       .catch(() => {})
     todoInput.value = ''
-    dueDateInput.value = ''
-    prioritySelect.value = 'medium'
-    repeatSelect.value = 'none'
     todoInput.focus()
   })
   todoInput.addEventListener('keydown', e => {
